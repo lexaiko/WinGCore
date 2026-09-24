@@ -24,6 +24,12 @@ public sealed class MailMessage
     public bool IsUnread { get; set; }
 
     public bool IsStarred { get; set; }
+    public string RecipientTo { get; set; } = string.Empty;
+    public string RecipientCc { get; set; } = string.Empty;
+    public string? BodyText { get; set; }
+    public string? BodyHtml { get; set; }
+    public bool HasFullBody { get; set; }
+    public List<MailAttachment> Attachments { get; set; } = [];
 
     /// <summary>
     /// Relative or friendly formatted time (e.g. "10:45 AM", "Yesterday", "Sep 22").
@@ -71,6 +77,24 @@ public sealed class MailMessage
                 }
             }
             return !string.IsNullOrWhiteSpace(SenderEmail) ? SenderEmail[0..1].ToUpperInvariant() : "M";
+        }
+    }
+}
+
+public sealed class MailAttachment
+{
+    public string AttachmentId { get; set; } = string.Empty;
+    public string Filename { get; set; } = string.Empty;
+    public string MimeType { get; set; } = string.Empty;
+    public long SizeBytes { get; set; }
+
+    public string FormattedSize
+    {
+        get
+        {
+            if (SizeBytes < 1024) return $"{SizeBytes} B";
+            if (SizeBytes < 1024 * 1024) return $"{SizeBytes / 1024.0:F1} KB";
+            return $"{SizeBytes / (1024.0 * 1024.0):F1} MB";
         }
     }
 }

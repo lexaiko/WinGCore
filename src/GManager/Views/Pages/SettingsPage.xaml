@@ -13,13 +13,13 @@
                        FontWeight="SemiBold"
                        Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                        Margin="0,0,0,4" />
-            <TextBlock Text="Manage your Google Cloud OAuth connection and app preferences."
+            <TextBlock Text="Manage background services, system tray, notifications, virtual device runtime, and local preferences."
                        FontSize="13"
                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                        Margin="0,0,0,24" />
 
-            <!-- SECTION 1: GOOGLE CLOUD OAUTH CREDENTIALS -->
-            <TextBlock Text="GOOGLE CLOUD OAUTH"
+            <!-- SECTION 1: NATIVE SERVICES & BACKGROUND -->
+            <TextBlock Text="BACKGROUND &amp; PUSH SERVICES"
                        FontSize="11.5"
                        FontWeight="SemiBold"
                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
@@ -30,85 +30,152 @@
                     BorderThickness="1"
                     CornerRadius="14"
                     ClipToBounds="True"
-                    Padding="20"
                     Margin="0,0,0,24">
                 <StackPanel>
-                    <TextBlock Text="OAuth 2.0 Desktop Application" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
-                    <TextBlock Text="Enter your Google Cloud Desktop Client ID and Secret to enable direct browser sign-in."
-                               FontSize="12"
-                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                               TextWrapping="Wrap"
-                               Margin="0,4,0,16" />
-
-                    <!-- Client ID -->
-                    <TextBlock Text="Client ID" FontSize="12" FontWeight="Medium" Margin="0,0,0,6" />
-                    <ui:TextBox Text="{Binding ClientId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                PlaceholderText="e.g. 1234567890-abcdef.apps.googleusercontent.com"
-                                ClearButtonEnabled="True"
-                                Margin="0,0,0,14" />
-
-                    <!-- Client Secret -->
-                    <TextBlock Text="Client Secret" FontSize="12" FontWeight="Medium" Margin="0,0,0,6" />
-                    <ui:TextBox Text="{Binding ClientSecret, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                PlaceholderText="e.g. GOCSPX-xxxxxxxxxxxxxxxxxxxxxxxx"
-                                ClearButtonEnabled="True"
-                                Margin="0,0,0,16" />
-
-                    <!-- Actions -->
-                    <Grid>
+                    <!-- MCS Push Transport Status -->
+                    <Grid Margin="18,14">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-
-                        <ui:Button Grid.Column="0"
-                                   Command="{Binding SaveSettingsCommand}"
-                                   Appearance="Primary"
-                                   Padding="20,8"
-                                   FontSize="13"
-                                   FontWeight="SemiBold"
-                                   Content="Save Credentials" />
-
-                        <!-- Save confirmation -->
-                        <StackPanel Grid.Column="1"
-                                    Orientation="Horizontal"
-                                    VerticalAlignment="Center"
-                                    Margin="14,0,0,0"
-                                    Visibility="{Binding SaveSuccess, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <Path Data="{StaticResource GeoCheckmark}"
-                                  Fill="#0F9D58"
-                                  Width="14"
-                                  Height="14"
-                                  Stretch="Uniform"
-                                  Margin="0,0,6,0"
-                                  VerticalAlignment="Center" />
-                            <TextBlock Text="Saved successfully" Foreground="#0F9D58" FontWeight="Medium" FontSize="12.5" VerticalAlignment="Center" />
-                        </StackPanel>
-
-                        <!-- Google Cloud Console link -->
-                        <ui:Button Grid.Column="2"
-                                   Command="{Binding DataContext.OpenGoogleCloudConsoleCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                   Background="Transparent"
-                                   BorderThickness="0"
-                                   Padding="8,6">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Path Data="{StaticResource GeoOpenInNew}"
-                                      Fill="#1A73E8"
-                                      Width="11"
-                                      Height="11"
-                                      Stretch="Uniform"
-                                      Margin="0,0,6,0"
-                                      VerticalAlignment="Center" />
-                                <TextBlock Text="Google Cloud Console" FontSize="12" Foreground="#1A73E8" FontWeight="Medium" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,3">
+                                <Ellipse Width="7" Height="7" Fill="#0F9D58" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                <TextBlock Text="Google MCS Push Transport" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
                             </StackPanel>
-                        </ui:Button>
+                            <TextBlock Text="{Binding McsStatusText}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                        <Border Grid.Column="1"
+                                Background="#140F9D58"
+                                BorderBrush="#0F9D58"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="8,4"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="ONLINE" FontSize="11" FontWeight="Bold" Foreground="#0F9D58" />
+                        </Border>
+                    </Grid>
+
+                    <Border Height="1" Background="{DynamicResource DividerStrokeColorDefaultBrush}" Margin="18,0,18,0" />
+
+                    <!-- Background Notifications Row -->
+                    <Grid Margin="18,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Text="Windows Toast Notifications" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                            <TextBlock Text="Show interactive notifications when new emails or drive updates arrive" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <ui:Button Command="{Binding SendTestNotificationCommand}"
+                                       Content="Test Toast"
+                                       Padding="10,5"
+                                       FontSize="11.5"
+                                       CornerRadius="6"
+                                       Margin="0,0,12,0" />
+                            <ui:ToggleSwitch IsChecked="{Binding NotificationsEnabled, Mode=TwoWay}"
+                                             VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Border Height="1" Background="{DynamicResource DividerStrokeColorDefaultBrush}" Margin="18,0,18,0" />
+
+                    <!-- Minimize to System Tray Row -->
+                    <Grid Margin="18,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Text="Minimize to System Tray on Close" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                            <TextBlock Text="Keep GManager running in the background taskbar tray when closing the window" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                        <ui:ToggleSwitch Grid.Column="1"
+                                         IsChecked="{Binding MinimizeToTrayOnClose, Mode=TwoWay}"
+                                         VerticalAlignment="Center" />
+                    </Grid>
+
+                    <Border Height="1" Background="{DynamicResource DividerStrokeColorDefaultBrush}" Margin="18,0,18,0" />
+
+                    <!-- Auto-start Row -->
+                    <Grid Margin="18,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Text="Launch on Windows Startup" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                            <TextBlock Text="Automatically start GManager minimized in tray when you log in to Windows" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                        <ui:ToggleSwitch Grid.Column="1"
+                                         IsChecked="{Binding AutoStartEnabled, Mode=TwoWay}"
+                                         VerticalAlignment="Center" />
                     </Grid>
                 </StackPanel>
             </Border>
 
-            <!-- SECTION 2: APPEARANCE & SYSTEM -->
-            <TextBlock Text="PREFERENCES"
+            <!-- SECTION 2: VIRTUAL ANDROID RUNTIME & DEVICES -->
+            <TextBlock Text="VIRTUAL ANDROID RUNTIME (WINGCORE)"
+                       FontSize="11.5"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                       Margin="4,0,0,8" />
+
+            <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="14"
+                    ClipToBounds="True"
+                    Margin="0,0,0,24">
+                <StackPanel>
+                    <Grid Margin="18,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,3">
+                                <Ellipse Width="7" Height="7" Fill="#1A73E8" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                <TextBlock Text="Virtual Device Registration" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding DeviceInfoText}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                        <Border Grid.Column="1"
+                                Background="#141A73E8"
+                                BorderBrush="#1A73E8"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="8,4"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{Binding DeviceStatusBadge}" FontSize="11" FontWeight="Bold" Foreground="#1A73E8" />
+                        </Border>
+                    </Grid>
+
+                    <Border Height="1" Background="{DynamicResource DividerStrokeColorDefaultBrush}" Margin="18,0,18,0" />
+
+                    <Grid Margin="18,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Text="Native Device &amp; Account Management" FontSize="13.5" FontWeight="Medium" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                            <TextBlock Text="Manage virtual device hardware profiles, check-in status, and enrolled Google account tokens." FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <ui:Button Grid.Column="1"
+                                   Command="{Binding OpenDevicesCommand}"
+                                   Content="Manage Devices"
+                                   Padding="14,6"
+                                   CornerRadius="6"
+                                   VerticalAlignment="Center" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- SECTION 3: APPEARANCE & SYNC -->
+            <TextBlock Text="APPEARANCE &amp; SYNC"
                        FontSize="11.5"
                        FontWeight="SemiBold"
                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
@@ -144,25 +211,96 @@
 
                     <Border Height="1" Background="{DynamicResource DividerStrokeColorDefaultBrush}" Margin="18,0,18,0" />
 
-                    <!-- Auto-start Row -->
+                    <!-- Smart Event-Driven Sync Info Row -->
                     <Grid Margin="18,14">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Text="Launch on Windows Startup" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
-                            <TextBlock Text="Automatically start GManager when you sign in to Windows" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Text="Smart Event-Driven Synchronization" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                            <TextBlock Text="Instant push notifications, auto-sync on Windows wake &amp; network reconnect. Zero periodic battery drain." FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
                         </StackPanel>
-                        <ui:ToggleSwitch Grid.Column="1"
-                                         IsChecked="{Binding AutoStartEnabled, Mode=TwoWay}"
-                                         VerticalAlignment="Center" />
+                        <Border Grid.Column="1"
+                                Background="#140F9D58"
+                                BorderBrush="#0F9D58"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="8,4"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="ACTIVE" FontSize="11" FontWeight="Bold" Foreground="#0F9D58" />
+                        </Border>
                     </Grid>
                 </StackPanel>
             </Border>
 
-            <!-- SECTION 3: PRIVACY & ABOUT -->
-            <TextBlock Text="ABOUT &amp; PRIVACY"
+            <!-- SECTION 4: STORAGE & LOCAL DATA -->
+            <TextBlock Text="STORAGE &amp; LOCAL SECURITY"
+                       FontSize="11.5"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                       Margin="4,0,0,8" />
+
+            <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="14"
+                    ClipToBounds="True"
+                    Padding="18,14"
+                    Margin="0,0,0,24">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="Application Data &amp; Runtime Database" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                        <TextBlock Text="{Binding DataDirectoryText}" FontSize="11.5" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,2,0,2" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="Encrypted locally using Windows DPAPI (AES-256-GCM). No cloud sync of credentials." FontSize="11.5" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                    <ui:Button Grid.Column="1"
+                               Command="{Binding OpenDataFolderCommand}"
+                               Content="Open Folder"
+                               Padding="14,6"
+                               CornerRadius="6"
+                               VerticalAlignment="Center" />
+                </Grid>
+            </Border>
+
+            <!-- Save Action Button -->
+            <Grid Margin="0,0,0,24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <ui:Button Grid.Column="0"
+                           Command="{Binding SaveSettingsCommand}"
+                           Appearance="Primary"
+                           Padding="24,8"
+                           FontSize="13"
+                           FontWeight="SemiBold"
+                           Content="Save Preferences" />
+
+                <!-- Save confirmation -->
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            Margin="14,0,0,0"
+                            Visibility="{Binding SaveSuccess, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Path Data="{StaticResource GeoCheckmark}"
+                          Fill="#0F9D58"
+                          Width="14"
+                          Height="14"
+                          Stretch="Uniform"
+                          Margin="0,0,6,0"
+                          VerticalAlignment="Center" />
+                    <TextBlock Text="Preferences saved successfully" Foreground="#0F9D58" FontWeight="Medium" FontSize="12.5" VerticalAlignment="Center" />
+                </StackPanel>
+            </Grid>
+
+            <!-- SECTION 5: ABOUT & PRIVACY -->
+            <TextBlock Text="ABOUT &amp; ARCHITECTURE"
                        FontSize="11.5"
                        FontWeight="SemiBold"
                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
@@ -176,9 +314,9 @@
                     Padding="20,16"
                     Margin="0,0,0,24">
                 <StackPanel>
-                    <TextBlock Text="GManager for Windows" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
-                    <TextBlock Text="Version 1.0.0 (Native Windows 11 .NET 8)" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,2,0,8" />
-                    <TextBlock Text="Built with iOS Google Account Manager aesthetics. All authentication tokens are stored strictly on your device encrypted with Windows DPAPI (AES-256-GCM). Zero telemetry, zero external servers."
+                    <TextBlock Text="GManager — WinGCore Runtime" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                    <TextBlock Text="Version 1.1.0 · Native Windows 11 / .NET 8 / microG Architecture" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,2,0,8" />
+                    <TextBlock Text="Virtual Android device registration with direct Google Mobile Connection Server (MCS) transport. All tokens and credentials are encrypted strictly on your local machine using Windows DPAPI (AES-256-GCM). Zero third-party telemetry, zero external servers."
                                FontSize="12"
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                TextWrapping="Wrap"

@@ -45,26 +45,6 @@ public sealed partial class MainViewModel : ViewModelBase
         set => SetProperty(ref _isAccountSwitcherOpen, value);
     }
 
-    private bool _isOAuthSetupDialogOpen;
-    public bool IsOAuthSetupDialogOpen
-    {
-        get => _isOAuthSetupDialogOpen;
-        set => SetProperty(ref _isOAuthSetupDialogOpen, value);
-    }
-
-    private string _setupClientId = string.Empty;
-    public string SetupClientId
-    {
-        get => _setupClientId;
-        set => SetProperty(ref _setupClientId, value);
-    }
-
-    private string _setupClientSecret = string.Empty;
-    public string SetupClientSecret
-    {
-        get => _setupClientSecret;
-        set => SetProperty(ref _setupClientSecret, value);
-    }
 
     private int _totalUnreadCount;
     public int TotalUnreadCount
@@ -264,30 +244,6 @@ public sealed partial class MainViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand]
-    public async Task SaveOAuthSetupAndLoginAsync()
-    {
-        if (string.IsNullOrWhiteSpace(SetupClientId)) return;
-
-        _config.ClientId = SetupClientId.Trim();
-        _config.ClientSecret = SetupClientSecret?.Trim() ?? string.Empty;
-        _config.SaveConfig();
-
-        IsOAuthSetupDialogOpen = false;
-        await AddLegacyAccountAsync();
-    }
-
-    [RelayCommand]
-    public void CloseOAuthSetupDialog()
-    {
-        IsOAuthSetupDialogOpen = false;
-    }
-
-    [RelayCommand]
-    public void OpenGoogleCloudConsole()
-    {
-        BrowserLauncher.OpenUrl("https://console.cloud.google.com/apis/credentials");
-    }
 
     [RelayCommand]
     public async Task RemoveAccountAsync(GoogleAccount? account)
@@ -349,7 +305,7 @@ public sealed partial class MainViewModel : ViewModelBase
         _eventAggregator.Subscribe<NewMailReceivedEvent>(e =>
         {
             var acc = Accounts.FirstOrDefault(a => a.Id == e.AccountId);
-            if (acc != null)
+            if (acc != null && _config.NotificationsEnabled)
             {
                 NotificationHelper.ShowNewMailToast(acc, e.Message);
             }

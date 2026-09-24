@@ -1,4 +1,5 @@
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Windows;
 using GManager.Auth;
@@ -167,15 +168,23 @@ public partial class App : Application
         var config = _serviceProvider.GetRequiredService<AppConfig>();
         ApplyAppTheme(config.ThemeMode);
 
-        // 6. Start Background Synchronization
+        // 6. Start Background Synchronization & Push Notification Coordinator
         LogStep("Starting SyncService");
         var syncService = _serviceProvider.GetRequiredService<SyncService>();
         syncService.Start();
 
-        // 7. Launch Main Window
+        LogStep("Starting McsPushCoordinator");
+        var mcsCoordinator = _serviceProvider.GetRequiredService<McsPushCoordinator>();
+        _ = mcsCoordinator.StartAsync();
+
+        // 7. Launch Main Window & System Tray
         LogStep("Resolving MainWindow from DI");
         var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
         MainWindow = mainWindow;
+
+        LogStep("Initializing SystemTrayService");
+        var trayService = _serviceProvider.GetRequiredService<SystemTrayService>();
+        trayService.Initialize(mainWindow);
 
         bool startMinimized = e.Args.Contains("--minimized");
         LogStep($"startMinimized = {startMinimized}");
@@ -200,7 +209,18 @@ public partial class App : Application
         services.AddSingleton(singleInstance);
 
         // Network & Auth
-        services.AddSingleton<HttpClient>();
+        services.AddSingleton(sp =>
+        {
+            var handler = new SocketsHttpHandler
+            {
+                AutomaticDecompression = DecompressionMethods.All,
+                UseProxy = false, // Critical: bypasses Windows WPAD proxy search delay
+                PooledConnectionLifetime = TimeSpan.FromMinutes(15),
+                PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+                EnableMultipleHttp2Connections = true
+            };
+            return new HttpClient(handler);
+        });
         services.AddSingleton<OAuthClient>();
         services.AddSingleton<TokenManager>();
         services.AddSingleton<NativeRuntimeClient>();
@@ -211,6 +231,8 @@ public partial class App : Application
         services.AddSingleton<GmailService>();
         services.AddSingleton<DriveService>();
         services.AddSingleton<SyncService>();
+        services.AddSingleton<McsPushCoordinator>();
+        services.AddSingleton<SystemTrayService>();
 
         // ViewModels
         services.AddSingleton<MainViewModel>();
@@ -240,6 +262,9 @@ public partial class App : Application
                 }
                 else if (action == "view_message" && args.TryGetValue("accountId", out var accountId))
                 {
+                    var tray = _serviceProvider?.GetService<SystemTrayService>();
+                    tray?.RestoreMainWindow();
+
                     if (MainWindow != null)
                     {
                         if (MainWindow.WindowState == WindowState.Minimized)
@@ -253,6 +278,11 @@ public partial class App : Application
                         args.TryGetValue("messageId", out var msgId);
                         eventBus?.Publish(new NavigateToAccountEvent(accountId, msgId));
                     }
+                }
+                else if (action == "test_toast")
+                {
+                    var tray = _serviceProvider?.GetService<SystemTrayService>();
+                    tray?.RestoreMainWindow();
                 }
             }
         });
@@ -299,6 +329,12 @@ public partial class App : Application
         {
             var sync = _serviceProvider.GetService<SyncService>();
             sync?.Stop();
+
+            var tray = _serviceProvider.GetService<SystemTrayService>();
+            tray?.Dispose();
+
+            var mcs = _serviceProvider.GetService<McsPushCoordinator>();
+            mcs?.Dispose();
 
             var db = _serviceProvider.GetService<Database>();
             db?.Dispose();

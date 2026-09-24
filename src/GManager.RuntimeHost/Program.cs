@@ -25,12 +25,43 @@ try
         Directory.CreateDirectory(directory);
         using var lease = new FileStream(Path.Combine(directory, "runtime.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
         var store = new WindowsDeviceStore(Path.Combine(directory, "runtime.db"));
-        using var handler = new HttpClientHandler { AllowAutoRedirect = false, AutomaticDecompression = DecompressionMethods.None };
+        using var handler = new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+            AutomaticDecompression = DecompressionMethods.All,
+            UseProxy = false, // Critical: bypasses Windows WPAD proxy auto-discovery delay (~2-3s)
+            PooledConnectionLifetime = TimeSpan.FromMinutes(15),
+            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+            EnableMultipleHttp2Connections = true
+        };
         using var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(35) };
-        var service = new RuntimeService(store, new GoogleCheckinProvider(http),
-            new NativeAccountBroker(store, store, new GoogleNativeAuthProvider(http)));
+        var broker = new NativeAccountBroker(store, store, new GoogleNativeAuthProvider(http));
+        var service = new RuntimeService(store, new GoogleCheckinProvider(http), broker);
         Console.WriteLine("Native runtime ready. Use GManager for interactive account sign-in.");
-        await RuntimePipe.ServeAsync(pipe, service, shutdown.Token);
+
+        var sessions = store.ListSessions();
+        var primarySession = sessions.FirstOrDefault();
+        GManager.Providers.Google.Mcs.McsClient? mcsClient = null;
+        if (primarySession != null)
+        {
+            Console.WriteLine($"[MCS] Starting persistent MCS transport for {primarySession.Email} ({primarySession.Id})...");
+            mcsClient = GManager.Providers.Google.Mcs.McsClient.Create(store, broker, primarySession.Id, new ConsoleMcsEventSink());
+            mcsClient.Start();
+        }
+
+        try
+        {
+            await RuntimePipe.ServeAsync(pipe, service, shutdown.Token);
+        }
+        finally
+        {
+            if (mcsClient != null)
+            {
+                Console.WriteLine("[MCS] Stopping MCS transport...");
+                await mcsClient.StopAsync();
+                mcsClient.Dispose();
+            }
+        }
         return 0;
     }
     RuntimeRequest request;
@@ -90,4 +121,27 @@ static int Usage()
         Play Integrity attestation and Android APK execution are not implemented.
         """);
     return 0;
+}
+
+sealed class ConsoleMcsEventSink : GManager.Providers.Google.Mcs.IMcsEventSink
+{
+    public void OnStateChanged(GManager.Providers.Google.Mcs.McsConnectionState previous, GManager.Providers.Google.Mcs.McsConnectionState current, string? reason = null)
+    {
+        Console.WriteLine($"[MCS] State: {previous} -> {current}" + (reason != null ? $" ({reason})" : ""));
+    }
+
+    public void OnMessageReceived(GManager.Providers.Google.Mcs.McsMessage message)
+    {
+        Console.WriteLine($"[MCS] Received Tag={message.Tag} ({message.Payload.GetType().Name}) [{message.Payload.CalculateSize()} bytes]");
+    }
+
+    public void OnError(Exception exception, string context)
+    {
+        Console.Error.WriteLine($"[MCS] Error in {context}: {exception.Message}");
+    }
+
+    public void OnLog(string message)
+    {
+        Console.WriteLine($"[MCS] {message}");
+    }
 }

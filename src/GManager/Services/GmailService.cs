@@ -183,6 +183,195 @@ public sealed class GmailService : GoogleApiBase
         }
     }
 
+    /// <summary>
+    /// Fetches the complete message details including full body (HTML/Text), recipients, and attachments.
+    /// </summary>
+    public async Task<MailMessage?> GetMessageDetailAsync(
+        string accountId,
+        string messageId,
+        CancellationToken cancellationToken = default)
+    {
+        var url = $"{BaseGmailUrl}/messages/{messageId}?format=full";
+        var dto = await GetJsonAsync<GmailMessageDto>(accountId, url, null, cancellationToken);
+        if (dto == null) return null;
+
+        var msg = ParseMailMessage(accountId, dto);
+
+        string? bodyText = null;
+        string? bodyHtml = null;
+        var attachments = new List<MailAttachment>();
+
+        ExtractBodyAndAttachments(dto.Payload, ref bodyText, ref bodyHtml, attachments);
+
+        msg.BodyText = bodyText;
+        msg.BodyHtml = bodyHtml;
+        msg.Attachments = attachments;
+        msg.HasFullBody = true;
+
+        if (dto.Payload?.Headers != null)
+        {
+            foreach (var header in dto.Payload.Headers)
+            {
+                if (string.Equals(header.Name, "To", StringComparison.OrdinalIgnoreCase))
+                {
+                    msg.RecipientTo = header.Value ?? string.Empty;
+                }
+                else if (string.Equals(header.Name, "Cc", StringComparison.OrdinalIgnoreCase))
+                {
+                    msg.RecipientCc = header.Value ?? string.Empty;
+                }
+            }
+        }
+
+        return msg;
+    }
+
+    /// <summary>
+    /// Stars or unstars a message.
+    /// </summary>
+    public async Task ToggleStarAsync(string accountId, string messageId, bool isStarred, CancellationToken cancellationToken = default)
+    {
+        var url = $"{BaseGmailUrl}/messages/{messageId}/modify";
+        var payload = isStarred
+            ? new { addLabelIds = new[] { "STARRED" }, removeLabelIds = Array.Empty<string>() }
+            : new { addLabelIds = Array.Empty<string>(), removeLabelIds = new[] { "STARRED" } };
+
+        var jsonContent = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+        using var response = await SendWithAuthAsync(accountId, () => new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = jsonContent
+        }, cancellationToken);
+        response.EnsureSuccessStatusCode();
+    }
+
+    /// <summary>
+    /// Moves a message to the Trash.
+    /// </summary>
+    public async Task TrashMessageAsync(string accountId, string messageId, CancellationToken cancellationToken = default)
+    {
+        var url = $"{BaseGmailUrl}/messages/{messageId}/trash";
+        using var response = await SendWithAuthAsync(accountId, () => new HttpRequestMessage(HttpMethod.Post, url), cancellationToken);
+        response.EnsureSuccessStatusCode();
+    }
+
+    /// <summary>
+    /// Downloads an attachment's binary content.
+    /// </summary>
+    public async Task<byte[]> DownloadAttachmentAsync(string accountId, string messageId, string attachmentId, CancellationToken cancellationToken = default)
+    {
+        var url = $"{BaseGmailUrl}/messages/{messageId}/attachments/{attachmentId}";
+        var dto = await GetJsonAsync<GmailAttachmentDto>(accountId, url, null, cancellationToken);
+        return DecodeBase64UrlBytes(dto?.Data);
+    }
+
+    /// <summary>
+    /// Sends an inline reply in the same thread.
+    /// </summary>
+    public async Task SendReplyAsync(
+        string accountId,
+        string threadId,
+        string inReplyTo,
+        string to,
+        string subject,
+        string bodyText,
+        CancellationToken cancellationToken = default)
+    {
+        var replySubject = subject.StartsWith("Re:", StringComparison.OrdinalIgnoreCase) ? subject : $"Re: {subject}";
+        var rfc2822 = new StringBuilder();
+        rfc2822.AppendLine($"To: {to}");
+        rfc2822.AppendLine($"Subject: {replySubject}");
+        if (!string.IsNullOrWhiteSpace(inReplyTo))
+        {
+            rfc2822.AppendLine($"In-Reply-To: {inReplyTo}");
+            rfc2822.AppendLine($"References: {inReplyTo}");
+        }
+        rfc2822.AppendLine("Content-Type: text/plain; charset=\"UTF-8\"");
+        rfc2822.AppendLine("MIME-Version: 1.0");
+        rfc2822.AppendLine();
+        rfc2822.AppendLine(bodyText);
+
+        var rawBase64Url = Convert.ToBase64String(Encoding.UTF8.GetBytes(rfc2822.ToString()))
+            .Replace('+', '-').Replace('/', '_').TrimEnd('=');
+
+        var payload = new
+        {
+            raw = rawBase64Url,
+            threadId = threadId
+        };
+
+        var url = $"{BaseGmailUrl}/messages/send";
+        var jsonContent = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+        using var response = await SendWithAuthAsync(accountId, () => new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = jsonContent
+        }, cancellationToken);
+        response.EnsureSuccessStatusCode();
+    }
+
+    private static void ExtractBodyAndAttachments(
+        GmailPayloadDto? payload,
+        ref string? bodyText,
+        ref string? bodyHtml,
+        List<MailAttachment> attachments)
+    {
+        if (payload == null) return;
+
+        if (!string.IsNullOrWhiteSpace(payload.Filename) && payload.Body?.AttachmentId != null)
+        {
+            attachments.Add(new MailAttachment
+            {
+                AttachmentId = payload.Body.AttachmentId,
+                Filename = payload.Filename,
+                MimeType = payload.MimeType ?? "application/octet-stream",
+                SizeBytes = payload.Body.Size
+            });
+            return;
+        }
+
+        var mime = payload.MimeType?.ToLowerInvariant();
+        if (mime == "text/plain" && string.IsNullOrEmpty(bodyText) && !string.IsNullOrEmpty(payload.Body?.Data))
+        {
+            bodyText = DecodeBase64Url(payload.Body.Data);
+        }
+        else if (mime == "text/html" && string.IsNullOrEmpty(bodyHtml) && !string.IsNullOrEmpty(payload.Body?.Data))
+        {
+            bodyHtml = DecodeBase64Url(payload.Body.Data);
+        }
+
+        if (payload.Parts != null)
+        {
+            foreach (var part in payload.Parts)
+            {
+                ExtractBodyAndAttachments(part, ref bodyText, ref bodyHtml, attachments);
+            }
+        }
+    }
+
+    public static string DecodeBase64Url(string? base64Url)
+    {
+        if (string.IsNullOrWhiteSpace(base64Url)) return string.Empty;
+        var incoming = base64Url.Replace('-', '+').Replace('_', '/');
+        switch (incoming.Length % 4)
+        {
+            case 2: incoming += "=="; break;
+            case 3: incoming += "="; break;
+        }
+        var bytes = Convert.FromBase64String(incoming);
+        return Encoding.UTF8.GetString(bytes);
+    }
+
+    public static byte[] DecodeBase64UrlBytes(string? base64Url)
+    {
+        if (string.IsNullOrWhiteSpace(base64Url)) return [];
+        var incoming = base64Url.Replace('-', '+').Replace('_', '/');
+        switch (incoming.Length % 4)
+        {
+            case 2: incoming += "=="; break;
+            case 3: incoming += "="; break;
+        }
+        return Convert.FromBase64String(incoming);
+    }
+
     #region Gmail API DTOs
 
     private sealed class GmailLabelDto
@@ -229,8 +418,35 @@ public sealed class GmailService : GoogleApiBase
 
     private sealed class GmailPayloadDto
     {
+        [JsonPropertyName("partId")]
+        public string? PartId { get; set; }
+
+        [JsonPropertyName("mimeType")]
+        public string? MimeType { get; set; }
+
+        [JsonPropertyName("filename")]
+        public string? Filename { get; set; }
+
         [JsonPropertyName("headers")]
         public List<GmailHeaderDto>? Headers { get; set; }
+
+        [JsonPropertyName("body")]
+        public GmailBodyDto? Body { get; set; }
+
+        [JsonPropertyName("parts")]
+        public List<GmailPayloadDto>? Parts { get; set; }
+    }
+
+    private sealed class GmailBodyDto
+    {
+        [JsonPropertyName("attachmentId")]
+        public string? AttachmentId { get; set; }
+
+        [JsonPropertyName("size")]
+        public long Size { get; set; }
+
+        [JsonPropertyName("data")]
+        public string? Data { get; set; }
     }
 
     private sealed class GmailHeaderDto
@@ -242,5 +458,18 @@ public sealed class GmailService : GoogleApiBase
         public string? Value { get; set; }
     }
 
+    private sealed class GmailAttachmentDto
+    {
+        [JsonPropertyName("attachmentId")]
+        public string? AttachmentId { get; set; }
+
+        [JsonPropertyName("size")]
+        public long Size { get; set; }
+
+        [JsonPropertyName("data")]
+        public string? Data { get; set; }
+    }
+
     #endregion
 }
+

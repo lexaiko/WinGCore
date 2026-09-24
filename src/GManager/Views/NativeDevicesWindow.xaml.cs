@@ -114,12 +114,13 @@ public partial class NativeDevicesWindow : Window
             SelectedSession = session;
             await LoadAsync();
             Sessions.SelectedItem = _sessions.FirstOrDefault(x => x.Id == session.Id);
-            try
+            Status.Text = "Signed in. Session ready. Select Use selected account.";
+            // Fire-and-forget device association check-in in background (matching microG behavior)
+            _ = Task.Run(async () =>
             {
-                await _client.SendAsync(new(1, "checkin", DeviceId: device.Id), _lifetime.Token);
-                Status.Text = "Signed in. Account-associated device check-in accepted. Select Use selected account.";
-            }
-            catch (NativeRuntimeException ex) { Status.Text = "Account session saved. Device association: " + ex.Message; }
+                try { await _client.SendAsync(new(1, "checkin", DeviceId: device.Id), _lifetime.Token); }
+                catch { }
+            });
         }
         else Status.Text = "Sign-in cancelled. No password was saved.";
     });

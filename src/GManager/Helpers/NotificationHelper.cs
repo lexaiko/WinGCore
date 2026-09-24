@@ -42,4 +42,20 @@ public static class NotificationHelper
             // Toast notification subsystem might be disabled by Windows Focus Assist or policy
         }
     }
+
+    public static void ShowTestToast()
+    {
+        try
+        {
+            new ToastContentBuilder()
+                .AddHeader("gmanager_system", "GManager Background Service", "")
+                .AddText("Background Notifications Active")
+                .AddText("Google MCS real-time push transport and system tray are active.")
+                .AddArgument("action", "test_toast")
+                .Show();
+        }
+        catch
+        {
+        }
+    }
 }

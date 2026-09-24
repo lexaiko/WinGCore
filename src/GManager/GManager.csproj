@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../GManager.Platform.Windows/GManager.Platform.Windows.csproj" />
+    <ProjectReference Include="../GManager.Providers.Google/GManager.Providers.Google.csproj" />
     <ProjectReference Include="../GManager.RuntimeHost/GManager.RuntimeHost.csproj" ReferenceOutputAssembly="false" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
     <!-- UI Framework & MVVM -->

@@ -16,6 +16,8 @@
             <helpers:ZeroToVisibilityConverter x:Key="ZeroToVisibilityConverter" />
             <helpers:BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
             <helpers:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" />
+            <helpers:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
+            <helpers:StringNotEmptyToVisibilityConverter x:Key="StringNotEmptyToVisibilityConverter" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

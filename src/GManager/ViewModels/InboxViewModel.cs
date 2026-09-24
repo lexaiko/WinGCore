@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using CommunityToolkit.Mvvm.Input;
 using GManager.Core;
 using GManager.Helpers;
@@ -23,8 +24,53 @@ public sealed partial class InboxViewModel : ViewModelBase
     public MailMessage? SelectedMessage
     {
         get => _selectedMessage;
-        set => SetProperty(ref _selectedMessage, value);
+        set
+        {
+            if (SetProperty(ref _selectedMessage, value))
+            {
+                OnPropertyChanged(nameof(HasSelectedMessage));
+                IsReplying = false;
+                ReplyText = string.Empty;
+                if (value != null)
+                {
+                    _ = LoadMessageDetailAsync(value);
+                }
+            }
+        }
     }
+
+    public bool HasSelectedMessage => SelectedMessage != null;
+
+    private bool _isLoadingDetail;
+    public bool IsLoadingDetail
+    {
+        get => _isLoadingDetail;
+        set => SetProperty(ref _isLoadingDetail, value);
+    }
+
+    private string _activeFilter = "All";
+    public string ActiveFilter
+    {
+        get => _activeFilter;
+        set
+        {
+            if (SetProperty(ref _activeFilter, value))
+            {
+                ApplyFilter();
+                OnPropertyChanged(nameof(IsAllFilter));
+                OnPropertyChanged(nameof(IsUnreadFilter));
+                OnPropertyChanged(nameof(IsStarredFilter));
+            }
+        }
+    }
+
+    public bool IsAllFilter => ActiveFilter == "All";
+    public bool IsUnreadFilter => ActiveFilter == "Unread";
+    public bool IsStarredFilter => ActiveFilter == "Starred";
+
+    [RelayCommand]
+    public void SetFilter(string filter) => ActiveFilter = filter;
+
 
     private string _searchQuery = string.Empty;
     public string SearchQuery
@@ -44,6 +90,27 @@ public sealed partial class InboxViewModel : ViewModelBase
     {
         get => _isRefreshing;
         set => SetProperty(ref _isRefreshing, value);
+    }
+
+    private bool _isReplying;
+    public bool IsReplying
+    {
+        get => _isReplying;
+        set => SetProperty(ref _isReplying, value);
+    }
+
+    private string _replyText = string.Empty;
+    public string ReplyText
+    {
+        get => _replyText;
+        set => SetProperty(ref _replyText, value);
+    }
+
+    private bool _isSendingReply;
+    public bool IsSendingReply
+    {
+        get => _isSendingReply;
+        set => SetProperty(ref _isSendingReply, value);
     }
 
     public InboxViewModel(Database database, GmailService gmailService, IEventAggregator eventAggregator)
@@ -100,6 +167,42 @@ public sealed partial class InboxViewModel : ViewModelBase
         }
     }
 
+    public async Task LoadMessageDetailAsync(MailMessage message)
+    {
+        if (string.IsNullOrEmpty(_currentAccountId)) return;
+
+        if (message.IsUnread)
+        {
+            _ = MarkAsReadAsync(message);
+        }
+
+        if (message.HasFullBody) return;
+
+        IsLoadingDetail = true;
+        try
+        {
+            var detail = await _gmailService.GetMessageDetailAsync(_currentAccountId, message.Id);
+            if (detail != null && SelectedMessage?.Id == message.Id)
+            {
+                SelectedMessage.BodyText = detail.BodyText;
+                SelectedMessage.BodyHtml = detail.BodyHtml;
+                SelectedMessage.RecipientTo = detail.RecipientTo;
+                SelectedMessage.RecipientCc = detail.RecipientCc;
+                SelectedMessage.Attachments = detail.Attachments;
+                SelectedMessage.HasFullBody = true;
+                OnPropertyChanged(nameof(SelectedMessage));
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Could not load message body: {ex.Message}";
+        }
+        finally
+        {
+            IsLoadingDetail = false;
+        }
+    }
+
     [RelayCommand]
     public async Task RefreshAsync()
     {
@@ -129,8 +232,141 @@ public sealed partial class InboxViewModel : ViewModelBase
         if (target == null || string.IsNullOrEmpty(_currentAccountId)) return;
 
         target.IsUnread = false;
+        OnPropertyChanged(nameof(SelectedMessage));
         await _gmailService.MarkAsReadAsync(_currentAccountId, target.Id);
         ApplyFilter();
+    }
+
+    [RelayCommand]
+    public async Task ToggleStarAsync(MailMessage? message)
+    {
+        var target = message ?? SelectedMessage;
+        if (target == null || string.IsNullOrEmpty(_currentAccountId)) return;
+
+        var newState = !target.IsStarred;
+        target.IsStarred = newState;
+        OnPropertyChanged(nameof(SelectedMessage));
+        ApplyFilter();
+
+        try
+        {
+            await _gmailService.ToggleStarAsync(_currentAccountId, target.Id, newState);
+        }
+        catch (Exception ex)
+        {
+            target.IsStarred = !newState;
+            StatusMessage = $"Failed to update star: {ex.Message}";
+            OnPropertyChanged(nameof(SelectedMessage));
+        }
+    }
+
+    [RelayCommand]
+    public async Task TrashMessageAsync(MailMessage? message)
+    {
+        var target = message ?? SelectedMessage;
+        if (target == null || string.IsNullOrEmpty(_currentAccountId)) return;
+
+        _allMessages.Remove(target);
+        if (SelectedMessage?.Id == target.Id)
+        {
+            SelectedMessage = null;
+        }
+        ApplyFilter();
+
+        try
+        {
+            await _gmailService.TrashMessageAsync(_currentAccountId, target.Id);
+            StatusMessage = "Message moved to trash.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Failed to trash message: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    public void StartReply()
+    {
+        IsReplying = true;
+        ReplyText = string.Empty;
+    }
+
+    [RelayCommand]
+    public void CancelReply()
+    {
+        IsReplying = false;
+        ReplyText = string.Empty;
+    }
+
+    [RelayCommand]
+    public async Task SendReplyAsync()
+    {
+        if (SelectedMessage == null || string.IsNullOrEmpty(_currentAccountId) || string.IsNullOrWhiteSpace(ReplyText))
+            return;
+
+        IsSendingReply = true;
+        try
+        {
+            var to = !string.IsNullOrWhiteSpace(SelectedMessage.SenderEmail) ? SelectedMessage.SenderEmail : SelectedMessage.SenderName;
+            await _gmailService.SendReplyAsync(
+                _currentAccountId,
+                SelectedMessage.ThreadId,
+                SelectedMessage.Id,
+                to,
+                SelectedMessage.Subject,
+                ReplyText);
+
+            StatusMessage = "Reply sent successfully.";
+            IsReplying = false;
+            ReplyText = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Failed to send reply: {ex.Message}";
+        }
+        finally
+        {
+            IsSendingReply = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task DownloadAttachmentAsync(MailAttachment? attachment)
+    {
+        if (attachment == null || SelectedMessage == null || string.IsNullOrEmpty(_currentAccountId)) return;
+
+        var saveDialog = new Microsoft.Win32.SaveFileDialog
+        {
+            FileName = attachment.Filename,
+            Filter = "All Files (*.*)|*.*",
+            Title = "Save Attachment"
+        };
+
+        if (saveDialog.ShowDialog() == true)
+        {
+            try
+            {
+                StatusMessage = $"Downloading {attachment.Filename}...";
+                var bytes = await _gmailService.DownloadAttachmentAsync(
+                    _currentAccountId,
+                    SelectedMessage.Id,
+                    attachment.AttachmentId);
+
+                await File.WriteAllBytesAsync(saveDialog.FileName, bytes);
+                StatusMessage = $"Saved {attachment.Filename} successfully.";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Download failed: {ex.Message}";
+            }
+        }
+    }
+
+    [RelayCommand]
+    public void CloseDetail()
+    {
+        SelectedMessage = null;
+        IsReplying = false;
     }
 
     [RelayCommand]
@@ -153,6 +389,15 @@ public sealed partial class InboxViewModel : ViewModelBase
         var query = SearchQuery?.Trim();
         IEnumerable<MailMessage> source = _allMessages;
 
+        if (ActiveFilter == "Unread")
+        {
+            source = source.Where(m => m.IsUnread);
+        }
+        else if (ActiveFilter == "Starred")
+        {
+            source = source.Where(m => m.IsStarred);
+        }
+
         if (!string.IsNullOrEmpty(query))
         {
             source = source.Where(m =>
@@ -168,3 +413,4 @@ public sealed partial class InboxViewModel : ViewModelBase
         }
     }
 }
+

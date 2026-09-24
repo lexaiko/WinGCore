@@ -45,7 +45,6 @@ public partial class NativeLoginWindow : Window
             _ticket = (await _client.SendAsync(new(1, "begin-login", DeviceId: _device.Id), _lifetime.Token)).Login!;
             var environment = await CoreWebView2Environment.CreateAsync(userDataFolder: Path.Combine(_client.DataDirectory, "LoginBrowser"));
             var options = environment.CreateCoreWebView2ControllerOptions();
-            options.IsInPrivateModeEnabled = true;
             options.ProfileName = "NativeLogin";
             await Browser.EnsureCoreWebView2Async(environment, options);
             if (_lifetime.IsCancellationRequested) return;

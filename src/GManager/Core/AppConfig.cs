@@ -59,6 +59,8 @@ public sealed class AppConfig
     public string ClientSecret { get; set; } = string.Empty;
     public int SyncIntervalMinutes { get; set; } = 5;
     public bool AutoStartEnabled { get; set; } = false;
+    public bool MinimizeToTrayOnClose { get; set; } = true;
+    public bool NotificationsEnabled { get; set; } = true;
     public string ThemeMode { get; set; } = "System"; // System, Light, Dark
 
     public AppConfig()
@@ -99,6 +101,8 @@ public sealed class AppConfig
                     ClientSecret = dto.ClientSecret ?? string.Empty;
                     SyncIntervalMinutes = dto.SyncIntervalMinutes > 0 ? dto.SyncIntervalMinutes : 5;
                     AutoStartEnabled = dto.AutoStartEnabled;
+                    MinimizeToTrayOnClose = dto.MinimizeToTrayOnClose;
+                    NotificationsEnabled = dto.NotificationsEnabled;
                     ThemeMode = !string.IsNullOrWhiteSpace(dto.ThemeMode) ? dto.ThemeMode : "System";
                 }
             }
@@ -126,6 +130,8 @@ public sealed class AppConfig
                 ClientSecret = ClientSecret,
                 SyncIntervalMinutes = SyncIntervalMinutes,
                 AutoStartEnabled = AutoStartEnabled,
+                MinimizeToTrayOnClose = MinimizeToTrayOnClose,
+                NotificationsEnabled = NotificationsEnabled,
                 ThemeMode = ThemeMode
             };
             var json = JsonSerializer.Serialize(dto, new JsonSerializerOptions { WriteIndented = true });
@@ -143,6 +149,8 @@ public sealed class AppConfig
         public string? ClientSecret { get; set; }
         public int SyncIntervalMinutes { get; set; }
         public bool AutoStartEnabled { get; set; }
+        public bool MinimizeToTrayOnClose { get; set; } = true;
+        public bool NotificationsEnabled { get; set; } = true;
         public string? ThemeMode { get; set; }
     }
 }

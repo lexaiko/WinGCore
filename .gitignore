@@ -34,4 +34,5 @@ skills-lock.json
 anti-slop/
 .cursor/
 .claude/
-scratch/
+## References / Clones
+docs/references/GmsCore/

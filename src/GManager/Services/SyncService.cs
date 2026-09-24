@@ -1,14 +1,16 @@
 using System.Collections.Concurrent;
+using System.Net.NetworkInformation;
 using GManager.Auth;
 using GManager.Core;
 using GManager.Models;
+using Microsoft.Win32;
 
 namespace GManager.Services;
 
 /// <summary>
-/// Background synchronization service.
-/// Uses PeriodicTimer to periodically update account profiles, storage quotas, and inbox messages.
-/// Detects newly arrived unread messages and raises NewMailReceivedEvent.
+/// Event-driven background synchronization service.
+/// Uses native OS events (Power Resume, Network Connectivity Restoration) and Push Notification triggers
+/// instead of continuous aggressive polling, preserving battery life and system resources.
 /// </summary>
 public sealed class SyncService : IDisposable
 {
@@ -20,10 +22,14 @@ public sealed class SyncService : IDisposable
     private readonly AppConfig _config;
 
     private CancellationTokenSource? _syncCts;
-    private Task? _backgroundTask;
+    private Task? _maintenanceTask;
     private readonly ConcurrentDictionary<string, HashSet<string>> _knownMessageIds = new();
 
-    public bool IsRunning => _backgroundTask != null && !_backgroundTask.IsCompleted;
+    private CancellationTokenSource? _debounceCts;
+    private readonly object _debounceLock = new();
+    private bool _isDisposed;
+
+    public bool IsRunning => _maintenanceTask != null && !_maintenanceTask.IsCompleted;
 
     public SyncService(
         Database database,
@@ -42,25 +48,41 @@ public sealed class SyncService : IDisposable
     }
 
     /// <summary>
-    /// Starts the background periodic synchronization loop.
+    /// Starts event-driven synchronization listeners and low-frequency idle maintenance.
     /// </summary>
     public void Start()
     {
         if (IsRunning) return;
 
+        // 1. Hook native OS events for true event-driven reactivity
+        SystemEvents.PowerModeChanged += OnPowerModeChanged;
+        NetworkChange.NetworkAvailabilityChanged += OnNetworkAvailabilityChanged;
+        NetworkChange.NetworkAddressChanged += OnNetworkAddressChanged;
+
         _syncCts = new CancellationTokenSource();
-        _backgroundTask = Task.Run(() => RunSyncLoopAsync(_syncCts.Token));
+        _maintenanceTask = Task.Run(() => RunEventDrivenMaintenanceLoopAsync(_syncCts.Token));
     }
 
     /// <summary>
-    /// Stops the background periodic synchronization loop.
+    /// Stops the service and unhooks all OS event listeners.
     /// </summary>
     public void Stop()
     {
+        SystemEvents.PowerModeChanged -= OnPowerModeChanged;
+        NetworkChange.NetworkAvailabilityChanged -= OnNetworkAvailabilityChanged;
+        NetworkChange.NetworkAddressChanged -= OnNetworkAddressChanged;
+
+        lock (_debounceLock)
+        {
+            _debounceCts?.Cancel();
+            _debounceCts?.Dispose();
+            _debounceCts = null;
+        }
+
         _syncCts?.Cancel();
         try
         {
-            _backgroundTask?.Wait(TimeSpan.FromSeconds(3));
+            _maintenanceTask?.Wait(TimeSpan.FromSeconds(3));
         }
         catch
         {
@@ -70,8 +92,66 @@ public sealed class SyncService : IDisposable
         {
             _syncCts?.Dispose();
             _syncCts = null;
-            _backgroundTask = null;
+            _maintenanceTask = null;
         }
+    }
+
+    /// <summary>
+    /// Debounces rapid network or system events before triggering full sync.
+    /// </summary>
+    private void TriggerDebouncedSync(int delayMs = 2500)
+    {
+        if (_isDisposed) return;
+
+        lock (_debounceLock)
+        {
+            _debounceCts?.Cancel();
+            _debounceCts?.Dispose();
+            _debounceCts = new CancellationTokenSource();
+            var token = _debounceCts.Token;
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(delayMs, token);
+                    if (!token.IsCancellationRequested)
+                    {
+                        AppLogger.Log("Sync", "Triggering event-driven sync after OS event.");
+                        await SyncAllNowAsync(token);
+                    }
+                }
+                catch (OperationCanceledException) { }
+                catch (Exception ex)
+                {
+                    AppLogger.LogError("Sync", "Event-driven sync failed", ex);
+                }
+            }, token);
+        }
+    }
+
+    private void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e)
+    {
+        if (e.Mode == PowerModes.Resume)
+        {
+            AppLogger.Log("Sync", "System resumed from sleep. Triggering immediate reconciliation.");
+            TriggerDebouncedSync(1500);
+        }
+    }
+
+    private void OnNetworkAvailabilityChanged(object? sender, NetworkAvailabilityEventArgs e)
+    {
+        if (e.IsAvailable)
+        {
+            AppLogger.Log("Sync", "Network connection restored. Triggering reconciliation.");
+            TriggerDebouncedSync(3000);
+        }
+    }
+
+    private void OnNetworkAddressChanged(object? sender, EventArgs e)
+    {
+        AppLogger.Log("Sync", "Network interface address changed.");
+        TriggerDebouncedSync(3000);
     }
 
     /// <summary>
@@ -90,7 +170,7 @@ public sealed class SyncService : IDisposable
     }
 
     /// <summary>
-    /// Immediately synchronizes a single account.
+    /// Immediately synchronizes a single account (triggered on Push notification or user action).
     /// </summary>
     public async Task SyncAccountNowAsync(string accountId, CancellationToken cancellationToken = default)
     {
@@ -101,9 +181,13 @@ public sealed class SyncService : IDisposable
         }
     }
 
-    private async Task RunSyncLoopAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// Low-frequency idle maintenance loop (every 30 minutes) purely as a health check and quota refresh.
+    /// Does not aggressively wake up the CPU every few minutes.
+    /// </summary>
+    private async Task RunEventDrivenMaintenanceLoopAsync(CancellationToken cancellationToken)
     {
-        // Initial run on startup
+        // 1. Initial sync on startup
         try
         {
             var accounts = await _database.GetAllAccountsAsync();
@@ -117,8 +201,8 @@ public sealed class SyncService : IDisposable
             // Ignore startup sync errors
         }
 
-        var intervalMinutes = Math.Max(1, _config.SyncIntervalMinutes);
-        using var timer = new PeriodicTimer(TimeSpan.FromMinutes(intervalMinutes));
+        // 2. Idle maintenance timer: 30 minutes (battery-friendly fallback)
+        using var timer = new PeriodicTimer(TimeSpan.FromMinutes(30));
 
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -133,7 +217,7 @@ public sealed class SyncService : IDisposable
             }
             catch
             {
-                // Continue loop on unexpected worker error
+                // Continue loop on unexpected maintenance error
             }
         }
     }
@@ -142,7 +226,7 @@ public sealed class SyncService : IDisposable
     {
         try
         {
-            // 1. Sync Profile & Avatar (if missing or periodically)
+            // 1. Sync Profile & Avatar (if missing)
             try
             {
                 if (string.IsNullOrEmpty(account.DisplayName) || string.IsNullOrEmpty(account.AvatarLocalPath))
@@ -214,7 +298,6 @@ public sealed class SyncService : IDisposable
         }
         catch (InvalidGrantException)
         {
-            // TokenManager handles setting ActionNeeded
             _eventAggregator.Publish(new SyncFailedEvent(account.Id, "Session expired. Sign-in required."));
         }
         catch (Exception ex)
@@ -225,6 +308,8 @@ public sealed class SyncService : IDisposable
 
     public void Dispose()
     {
+        if (_isDisposed) return;
+        _isDisposed = true;
         Stop();
     }
 }
