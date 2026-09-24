@@ -123,14 +123,24 @@ public partial class App : Application
 
                 Dispatcher.Invoke(() =>
                 {
+                    LogStep("Handling ACTIVATE in Dispatcher.Invoke");
                     if (MainWindow != null)
                     {
-                        if (MainWindow.WindowState == WindowState.Minimized)
+                        var trayService = _serviceProvider?.GetService<SystemTrayService>();
+                        if (trayService != null)
                         {
-                            MainWindow.WindowState = WindowState.Normal;
+                            trayService.RestoreMainWindow();
                         }
-                        MainWindow.Show();
-                        MainWindow.Activate();
+                        else
+                        {
+                            if (!MainWindow.IsVisible) MainWindow.Show();
+                            if (MainWindow.WindowState == WindowState.Minimized) MainWindow.WindowState = WindowState.Normal;
+                            MainWindow.Activate();
+                            MainWindow.Focus();
+                        }
+
+                        MainWindow.Topmost = true;
+                        MainWindow.Topmost = false;
                         MainWindow.Focus();
                     }
                 });
@@ -149,8 +159,19 @@ public partial class App : Application
 
         // 3. Initialize SQLite Database & Migrations
         LogStep("Initializing SQLite Database");
-        var database = _serviceProvider.GetRequiredService<Database>();
-        database.Initialize();
+        try
+        {
+            LogStep("Resolving Database from DI container...");
+            var database = _serviceProvider.GetRequiredService<Database>();
+            LogStep("Calling database.Initialize()...");
+            database.Initialize();
+            LogStep("SQLite Database initialized successfully");
+        }
+        catch (Exception ex)
+        {
+            LogStep($"SQLite Database initialization failed: {ex}");
+            throw;
+        }
 
         // 4. Configure Toast Notification Deep Linking
         LogStep("Configuring Toast Notifications");

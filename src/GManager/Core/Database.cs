@@ -27,8 +27,7 @@ public sealed class Database : IDisposable
         _connectionString = new SqliteConnectionStringBuilder
         {
             DataSource = dbPath,
-            Mode = SqliteOpenMode.ReadWriteCreate,
-            Cache = SqliteCacheMode.Shared
+            Mode = SqliteOpenMode.ReadWriteCreate
         }.ToString();
 
         _encryption = encryption;

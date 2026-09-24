@@ -50,7 +50,7 @@ public sealed class NativeAccountBroker(IDeviceStore devices, INativeAccountStor
         var locale = profile.Locale.Split('_', '-');
         var query = new Dictionary<string, string>
         {
-            ["source"] = "android", ["xoauth_display_name"] = "GManager Windows",
+            ["source"] = "android", ["xoauth_display_name"] = "Android Device",
             ["lang"] = locale[0], ["cc"] = locale.Length > 1 ? locale[1].ToLowerInvariant() : "us",
             ["langCountry"] = profile.Locale.ToLowerInvariant(), ["hl"] = profile.Locale.Replace('_', '-'), ["tmpl"] = "new_account"
         };

@@ -26,7 +26,6 @@ public partial class NativeLoginWindow : Window
         Closed += (_, _) =>
         {
             _lifetime.Cancel();
-            Browser.CoreWebView2?.CookieManager.DeleteAllCookies();
             Browser.Dispose();
             if (_ticket is not null) _ = CancelTicketAsync(_ticket.Id);
         };
@@ -43,7 +42,13 @@ public partial class NativeLoginWindow : Window
         try
         {
             _ticket = (await _client.SendAsync(new(1, "begin-login", DeviceId: _device.Id), _lifetime.Token)).Login!;
-            var environment = await CoreWebView2Environment.CreateAsync(userDataFolder: Path.Combine(_client.DataDirectory, "LoginBrowser"));
+            var envOptions = new CoreWebView2EnvironmentOptions
+            {
+                AdditionalBrowserArguments = "--disable-quic --winhttp-proxy-resolver"
+            };
+            var environment = await CoreWebView2Environment.CreateAsync(
+                userDataFolder: Path.Combine(_client.DataDirectory, "LoginBrowser"),
+                options: envOptions);
             var options = environment.CreateCoreWebView2ControllerOptions();
             options.ProfileName = "NativeLogin";
             await Browser.EnsureCoreWebView2Async(environment, options);
@@ -54,10 +59,32 @@ public partial class NativeLoginWindow : Window
             core.Settings.IsPasswordAutosaveEnabled = false;
             core.Settings.IsGeneralAutofillEnabled = false;
             core.Settings.AreDefaultContextMenusEnabled = false;
+            core.Settings.IsReputationCheckingRequired = false; // Disable Microsoft SmartScreen overhead on every submit
             core.Settings.UserAgent = "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36 MinuteMaid";
-            core.PermissionRequested += (_, args) => args.State = CoreWebView2PermissionState.Deny;
+            core.PermissionRequested += (_, args) =>
+            {
+                if (args.PermissionKind is CoreWebView2PermissionKind.Camera or CoreWebView2PermissionKind.Microphone or CoreWebView2PermissionKind.Geolocation)
+                {
+                    args.State = CoreWebView2PermissionState.Deny;
+                }
+                else
+                {
+                    args.State = CoreWebView2PermissionState.Allow;
+                }
+            };
             core.DownloadStarting += (_, args) => args.Cancel = true;
-            core.NewWindowRequested += (_, args) => args.Handled = true;
+            core.NewWindowRequested += (_, args) =>
+            {
+                if (IsGoogleLoginOrigin(args.Uri))
+                {
+                    args.Handled = true;
+                    core.Navigate(args.Uri);
+                }
+                else
+                {
+                    args.Handled = false;
+                }
+            };
             core.NavigationStarting += (_, args) =>
             {
                 if (!IsGoogleLoginOrigin(args.Uri))
@@ -102,6 +129,7 @@ public partial class NativeLoginWindow : Window
                 """ + metadata + ";" + """
                   const notify = value => window.chrome.webview.postMessage(value);
                   const noop = () => {};
+
                   window.mm = {
                     getAndroidId: () => meta.androidId, getBuildVersionSdk: () => meta.sdk,
                     getAuthModuleVersionCode: () => 250000000, getPlayServicesVersionCode: () => 250000000,
@@ -110,10 +138,9 @@ public partial class NativeLoginWindow : Window
                     getPhoneNumber: () => null, getSimSerial: () => null, getSimState: () => 0,
                     fetchVerifiedPhoneNumber: () => null, hasPhoneNumber: () => false, hasTelephony: () => false,
                     isUserOwner: () => true, closeView: () => notify('finish'), skipLogin: () => notify('cancel'),
-                    getDroidGuardResult: noop, startFido2SignRequest: noop,
-                    cancelFido2SignRequest: noop, sendFido2SkUiEvent: noop, fetchIIDToken: noop,
+                    showView: noop, showKeyboard: noop, hideKeyboard: noop,
                     addAccount: noop, attemptLogin: noop, backupSyncOptIn: noop, clearOldLoginAttempts: noop,
-                    goBack: noop, hideKeyboard: noop, showKeyboard: noop, showView: noop, log: noop,
+                    goBack: noop, log: noop,
                     notifyOnTermsOfServiceAccepted: noop, setAccountIdentifier: noop, setAllActionsEnabled: noop,
                     setBackButtonEnabled: noop, setNewAccountCreated: noop, setPrimaryActionEnabled: noop,
                     setPrimaryActionLabel: noop, setSecondaryActionEnabled: noop, setSecondaryActionLabel: noop,
