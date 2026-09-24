@@ -1,0 +1,190 @@
+<UserControl x:Class="GManager.Views.Pages.SettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="32,24,32,32" MaxWidth="680" HorizontalAlignment="Left">
+            <!-- Header -->
+            <TextBlock Text="Settings"
+                       FontSize="22"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                       Margin="0,0,0,4" />
+            <TextBlock Text="Manage your Google Cloud OAuth connection and app preferences."
+                       FontSize="13"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                       Margin="0,0,0,24" />
+
+            <!-- SECTION 1: GOOGLE CLOUD OAUTH CREDENTIALS -->
+            <TextBlock Text="GOOGLE CLOUD OAUTH"
+                       FontSize="11.5"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                       Margin="4,0,0,8" />
+
+            <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="14"
+                    ClipToBounds="True"
+                    Padding="20"
+                    Margin="0,0,0,24">
+                <StackPanel>
+                    <TextBlock Text="OAuth 2.0 Desktop Application" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                    <TextBlock Text="Enter your Google Cloud Desktop Client ID and Secret to enable direct browser sign-in."
+                               FontSize="12"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               TextWrapping="Wrap"
+                               Margin="0,4,0,16" />
+
+                    <!-- Client ID -->
+                    <TextBlock Text="Client ID" FontSize="12" FontWeight="Medium" Margin="0,0,0,6" />
+                    <ui:TextBox Text="{Binding ClientId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                PlaceholderText="e.g. 1234567890-abcdef.apps.googleusercontent.com"
+                                ClearButtonEnabled="True"
+                                Margin="0,0,0,14" />
+
+                    <!-- Client Secret -->
+                    <TextBlock Text="Client Secret" FontSize="12" FontWeight="Medium" Margin="0,0,0,6" />
+                    <ui:TextBox Text="{Binding ClientSecret, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                PlaceholderText="e.g. GOCSPX-xxxxxxxxxxxxxxxxxxxxxxxx"
+                                ClearButtonEnabled="True"
+                                Margin="0,0,0,16" />
+
+                    <!-- Actions -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <ui:Button Grid.Column="0"
+                                   Command="{Binding SaveSettingsCommand}"
+                                   Appearance="Primary"
+                                   Padding="20,8"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   Content="Save Credentials" />
+
+                        <!-- Save confirmation -->
+                        <StackPanel Grid.Column="1"
+                                    Orientation="Horizontal"
+                                    VerticalAlignment="Center"
+                                    Margin="14,0,0,0"
+                                    Visibility="{Binding SaveSuccess, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Path Data="{StaticResource GeoCheckmark}"
+                                  Fill="#0F9D58"
+                                  Width="14"
+                                  Height="14"
+                                  Stretch="Uniform"
+                                  Margin="0,0,6,0"
+                                  VerticalAlignment="Center" />
+                            <TextBlock Text="Saved successfully" Foreground="#0F9D58" FontWeight="Medium" FontSize="12.5" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <!-- Google Cloud Console link -->
+                        <ui:Button Grid.Column="2"
+                                   Command="{Binding DataContext.OpenGoogleCloudConsoleCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                   Background="Transparent"
+                                   BorderThickness="0"
+                                   Padding="8,6">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="{StaticResource GeoOpenInNew}"
+                                      Fill="#1A73E8"
+                                      Width="11"
+                                      Height="11"
+                                      Stretch="Uniform"
+                                      Margin="0,0,6,0"
+                                      VerticalAlignment="Center" />
+                                <TextBlock Text="Google Cloud Console" FontSize="12" Foreground="#1A73E8" FontWeight="Medium" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </ui:Button>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- SECTION 2: APPEARANCE & SYSTEM -->
+            <TextBlock Text="PREFERENCES"
+                       FontSize="11.5"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                       Margin="4,0,0,8" />
+
+            <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="14"
+                    ClipToBounds="True"
+                    Margin="0,0,0,24">
+                <StackPanel>
+                    <!-- Theme Selector Row -->
+                    <Grid Margin="18,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="App Theme" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                            <TextBlock Text="Choose Light, Dark, or follow Windows system theme" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                        <ComboBox Grid.Column="1"
+                                  SelectedValue="{Binding SelectedTheme, Mode=TwoWay}"
+                                  SelectedValuePath="Content"
+                                  Width="130"
+                                  VerticalAlignment="Center">
+                            <ComboBoxItem Content="System" />
+                            <ComboBoxItem Content="Dark" />
+                            <ComboBoxItem Content="Light" />
+                        </ComboBox>
+                    </Grid>
+
+                    <Border Height="1" Background="{DynamicResource DividerStrokeColorDefaultBrush}" Margin="18,0,18,0" />
+
+                    <!-- Auto-start Row -->
+                    <Grid Margin="18,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="Launch on Windows Startup" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                            <TextBlock Text="Automatically start GManager when you sign in to Windows" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                        <ui:ToggleSwitch Grid.Column="1"
+                                         IsChecked="{Binding AutoStartEnabled, Mode=TwoWay}"
+                                         VerticalAlignment="Center" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- SECTION 3: PRIVACY & ABOUT -->
+            <TextBlock Text="ABOUT &amp; PRIVACY"
+                       FontSize="11.5"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                       Margin="4,0,0,8" />
+
+            <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="14"
+                    ClipToBounds="True"
+                    Padding="20,16"
+                    Margin="0,0,0,24">
+                <StackPanel>
+                    <TextBlock Text="GManager for Windows" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                    <TextBlock Text="Version 1.0.0 (Native Windows 11 .NET 8)" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,2,0,8" />
+                    <TextBlock Text="Built with iOS Google Account Manager aesthetics. All authentication tokens are stored strictly on your device encrypted with Windows DPAPI (AES-256-GCM). Zero telemetry, zero external servers."
+                               FontSize="12"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               TextWrapping="Wrap"
+                               LineHeight="18" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

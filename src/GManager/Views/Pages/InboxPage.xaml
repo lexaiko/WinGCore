@@ -1,0 +1,261 @@
+<UserControl x:Class="GManager.Views.Pages.InboxPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d">
+    <Grid Margin="24,18,24,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" /> <!-- Header & Search -->
+            <RowDefinition Height="*" />    <!-- Grouped Message List -->
+        </Grid.RowDefinitions>
+
+        <!-- Header & Search Toolbar -->
+        <Grid Grid.Row="0" Margin="0,0,0,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Search box (Fluent rounded input with vector icon) -->
+            <Grid Grid.Column="0">
+                <ui:TextBox Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                            PlaceholderText="Search in mail..."
+                            ClearButtonEnabled="True"
+                            VerticalAlignment="Center"
+                            FontSize="13"
+                            Padding="36,8,12,8" />
+                <Path Data="{StaticResource GeoSearch}"
+                      Fill="{DynamicResource TextFillColorSecondaryBrush}"
+                      Width="14"
+                      Height="14"
+                      Stretch="Uniform"
+                      HorizontalAlignment="Left"
+                      VerticalAlignment="Center"
+                      Margin="14,0,0,0"
+                      IsHitTestVisible="False" />
+            </Grid>
+
+            <!-- Refresh Button -->
+            <ui:Button Grid.Column="1"
+                       Command="{Binding RefreshCommand}"
+                       Margin="10,0,0,0"
+                       Padding="14,8"
+                       CornerRadius="8"
+                       ToolTip="Refresh inbox">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Path Data="{StaticResource GeoRefresh}"
+                          Fill="{DynamicResource TextFillColorPrimaryBrush}"
+                          Width="13"
+                          Height="13"
+                          Stretch="Uniform"
+                          Margin="0,0,7,0"
+                          VerticalAlignment="Center" />
+                    <TextBlock Text="Refresh" FontSize="12.5" FontWeight="Medium" VerticalAlignment="Center" />
+                </StackPanel>
+            </ui:Button>
+        </Grid>
+
+        <!-- Message List Container (iOS Inset Grouped Card) -->
+        <Border Grid.Row="1"
+                Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="14"
+                ClipToBounds="True">
+            <Grid>
+                <!-- Empty State (Vector Checkmark & Clean Typography) -->
+                <StackPanel HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Visibility="{Binding FilteredMessages.Count, Converter={StaticResource ZeroToVisibilityConverter}}">
+                    <Border Width="64"
+                            Height="64"
+                            CornerRadius="32"
+                            Background="#141A73E8"
+                            HorizontalAlignment="Center"
+                            Margin="0,0,0,16">
+                        <Path Data="{StaticResource GeoCheckmark}"
+                              Fill="#1A73E8"
+                              Width="26"
+                              Height="26"
+                              Stretch="Uniform"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Text="All caught up"
+                               FontSize="16"
+                               FontWeight="SemiBold"
+                               HorizontalAlignment="Center"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                    <TextBlock Text="No messages in your inbox"
+                               FontSize="12.5"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               HorizontalAlignment="Center"
+                               Margin="0,4,0,0" />
+                </StackPanel>
+
+                <!-- Virtualized Messages List -->
+                <ListView ItemsSource="{Binding FilteredMessages}"
+                          SelectedItem="{Binding SelectedMessage}"
+                          Background="Transparent"
+                          BorderThickness="0"
+                          Padding="0"
+                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                          ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="Margin" Value="0" />
+                            <Setter Property="BorderThickness" Value="0" />
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListViewItem">
+                                        <Border x:Name="ItemBorder"
+                                                Background="{TemplateBinding Background}"
+                                                Padding="16,12"
+                                                BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
+                                                BorderThickness="0,0,0,1">
+                                            <ContentPresenter />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                                            </Trigger>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListView.ItemContainerStyle>
+
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" /> <!-- Unread indicator dot -->
+                                    <ColumnDefinition Width="Auto" /> <!-- Sender Avatar circle -->
+                                    <ColumnDefinition Width="*" />    <!-- Content (Sender, Date, Subject, Snippet) -->
+                                    <ColumnDefinition Width="Auto" /> <!-- Action buttons -->
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Unread Blue Dot -->
+                                <Ellipse Grid.Column="0"
+                                         Width="8"
+                                         Height="8"
+                                         Fill="#1A73E8"
+                                         VerticalAlignment="Center"
+                                         Margin="0,0,10,0"
+                                         Visibility="{Binding IsUnread, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                <Border Grid.Column="0"
+                                        Width="8"
+                                        Margin="0,0,10,0"
+                                        Visibility="{Binding IsUnread, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+
+                                <!-- Sender Avatar Circle -->
+                                <Border Grid.Column="1"
+                                        Width="38"
+                                        Height="38"
+                                        CornerRadius="19"
+                                        Background="#E8F0FE"
+                                        VerticalAlignment="Top"
+                                        Margin="0,2,14,0">
+                                    <TextBlock Text="{Binding SenderInitials}"
+                                               FontSize="13"
+                                               FontWeight="Bold"
+                                               Foreground="#1A73E8"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
+                                </Border>
+
+                                <!-- Email Summary -->
+                                <Grid Grid.Column="2" VerticalAlignment="Center">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Top Row: Sender & Timestamp -->
+                                    <Grid Grid.Row="0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding SenderName}"
+                                                   FontSize="13.5"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                                   TextTrimming="CharacterEllipsis" />
+
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding FormattedTime}"
+                                                   FontSize="11.5"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                    </Grid>
+
+                                    <!-- Middle Row: Subject -->
+                                    <TextBlock Grid.Row="1"
+                                               Text="{Binding Subject}"
+                                               FontSize="13"
+                                               FontWeight="Medium"
+                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                               TextTrimming="CharacterEllipsis"
+                                               Margin="0,2,0,2" />
+
+                                    <!-- Bottom Row: Snippet -->
+                                    <TextBlock Grid.Row="2"
+                                               Text="{Binding Snippet}"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                               TextTrimming="CharacterEllipsis" />
+                                </Grid>
+
+                                <!-- Right Quick Actions (Vector Icons) -->
+                                <StackPanel Grid.Column="3"
+                                            Orientation="Horizontal"
+                                            VerticalAlignment="Center"
+                                            Margin="10,0,0,0">
+                                    <ui:Button Command="{Binding DataContext.OpenInBrowserCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                               CommandParameter="{Binding}"
+                                               ToolTip="Open in Gmail"
+                                               Padding="8,6"
+                                               Margin="2,0"
+                                               Background="Transparent"
+                                               BorderThickness="0">
+                                        <Path Data="{StaticResource GeoOpenInNew}"
+                                              Fill="{DynamicResource TextFillColorSecondaryBrush}"
+                                              Width="12"
+                                              Height="12"
+                                              Stretch="Uniform" />
+                                    </ui:Button>
+
+                                    <ui:Button Command="{Binding DataContext.MarkAsReadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                               CommandParameter="{Binding}"
+                                               ToolTip="Mark as read"
+                                               Padding="8,6"
+                                               Background="Transparent"
+                                               BorderThickness="0"
+                                               Visibility="{Binding IsUnread, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <Path Data="{StaticResource GeoCheckmark}"
+                                              Fill="#1A73E8"
+                                              Width="13"
+                                              Height="13"
+                                              Stretch="Uniform" />
+                                    </ui:Button>
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "name": "GManager Windows Lab",
+  "fingerprint": "gmanager/windows_lab/windows_lab:13/TQ3A.230805.001/lab:userdebug/test-keys",
+  "brand": "gmanager",
+  "manufacturer": "GManager",
+  "model": "Windows Lab",
+  "product": "windows_lab",
+  "device": "windows_lab",
+  "hardware": "windows",
+  "sdkVersion": 33,
+  "buildTimeSeconds": 0,
+  "nativePlatforms": ["x86_64"],
+  "locale": "en_US",
+  "timeZone": "Etc/UTC"
+}

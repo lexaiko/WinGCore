@@ -1,0 +1,37 @@
+## Visual Studio / .NET / JetBrains
+[Bb]in/
+[Oo]bj/
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+TestResults/
+[Tt]emp/
+
+## Local Runtime / Database / Credentials
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+gmanager.config.json
+*.pfx
+*.certificate
+
+## Logs & Crash Dumps
+*.log
+*.dmp
+*.crash
+
+## AI Agents & IDE Assistants
+.agents/
+.gemini/
+skills-lock.json
+anti-slop/
+.cursor/
+.claude/
+scratch/
