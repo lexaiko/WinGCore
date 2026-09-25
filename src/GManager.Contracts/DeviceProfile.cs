@@ -70,6 +70,8 @@ public sealed record DeviceProfile
         {
             "Pixel 9 Pro" => "caiman",
             "Pixel 9 Pro XL" => "komodo",
+            "Pixel 10 Pro" => "blazer",
+            "Pixel 10 Pro XL" => "mustang",
             _ => null
         };
         if (expectedDevice is not null &&

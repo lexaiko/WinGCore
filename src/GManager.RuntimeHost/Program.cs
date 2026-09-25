@@ -36,7 +36,7 @@ try
         };
         using var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(35) };
         var broker = new NativeAccountBroker(store, store, new GoogleNativeAuthProvider(http));
-        var service = new RuntimeService(store, new GoogleCheckinProvider(http), broker);
+        var service = new RuntimeService(store, new GoogleCheckinProvider(http), broker, new GooglePlaySyncProvider(http));
         Console.WriteLine("Native runtime ready. Use GManager for interactive account sign-in.");
 
         var sessions = store.ListSessions();

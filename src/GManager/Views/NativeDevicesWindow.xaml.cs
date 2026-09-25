@@ -84,6 +84,25 @@ public partial class NativeDevicesWindow : Window
         DensityDpi = 480,
         NativePlatforms = ["arm64-v8a", "armeabi-v7a", "armeabi"]
     }));
+    private async void NewPixel10(object sender, RoutedEventArgs e) => await RunAsync(() => CreateAsync(new()
+    {
+        Name = "Pixel 10 Pro XL " + DateTime.Now.ToString("HH:mm"),
+        Brand = "google",
+        Manufacturer = "Google",
+        Model = "Pixel 10 Pro XL",
+        Product = "mustang",
+        Device = "mustang",
+        Hardware = "mustang",
+        Fingerprint = "google/mustang/mustang:15/AP4A.241205.013/12345678:user/release-keys",
+        SdkVersion = 35,
+        BuildTimeSeconds = 1733356800,
+        Bootloader = "mustang-1.0-12345678",
+        Radio = "g5400i-241010-241101-B-12345678",
+        WidthPixels = 1344,
+        HeightPixels = 2992,
+        DensityDpi = 480,
+        NativePlatforms = ["arm64-v8a", "armeabi-v7a", "armeabi"]
+    }));
     private async void Import(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog { Filter = "Device profile or Magisk pif (*.json)|*.json", Title = "Import device profile" };
@@ -178,6 +197,18 @@ public partial class NativeDevicesWindow : Window
         }
         else Status.Text = "Export cancelled.";
     });
+    private async void DeleteDevice(object sender, RoutedEventArgs e) => await RunAsync(async () =>
+    {
+        var device = Device();
+        if (MessageBox.Show(this, $"Delete virtual device '{device.Profile.Name}' ({device.Profile.Model}) and its associated local sessions? Google-side access remains managed in your Google account.", "Delete virtual device", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+        {
+            Status.Text = "Deletion cancelled.";
+            return;
+        }
+        await _client.SendAsync(new(1, "delete-device", DeviceId: device.Id), _lifetime.Token);
+        await LoadAsync();
+        Status.Text = $"Device '{device.Profile.Name}' deleted.";
+    });
     private async void Checkin(object sender, RoutedEventArgs e) => await RunAsync(async () =>
     {
         await _client.SendAsync(new(1, "checkin", DeviceId: Device().Id), _lifetime.Token);
@@ -227,6 +258,12 @@ public partial class NativeDevicesWindow : Window
         }
         await LoadAsync();
         Status.Text = string.Join(" · ", results);
+    });
+    private async void SyncPlay(object sender, RoutedEventArgs e) => await RunAsync(async () =>
+    {
+        var sessionId = Session().Id;
+        var result = await _client.SendAsync(new(1, "sync-play-device", SessionId: sessionId), _lifetime.Token);
+        Status.Text = result.Message;
     });
     private async void FinishSetup(object sender, RoutedEventArgs e) => await RunAsync(async () =>
     {

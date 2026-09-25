@@ -266,6 +266,60 @@ public sealed class RuntimeTests : IDisposable
         Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<DeviceProfile>(json, RuntimeProtocol.Json));
     }
 
+    [Fact]
+    public void DeleteDeviceRemovesDeviceAndAssociatedSessions()
+    {
+        var store = new WindowsDeviceStore(DatabasePath);
+        var device = store.Create(Profile);
+        store.SaveSession(device.Id, new NativeCredential { Email = "test@gmail.com", MasterToken = "aas_et/test", AccountId = "12345", DisplayName = "Test User" });
+        Assert.Single(store.List());
+        Assert.Single(store.ListSessions());
+
+        store.Delete(device.Id);
+
+        Assert.Empty(store.List());
+        Assert.Empty(store.ListSessions());
+        Assert.Throws<KeyNotFoundException>(() => store.Get(device.Id));
+    }
+
+    [Fact]
+    public async Task RuntimeServiceHandlesDeleteDevice()
+    {
+        var store = new WindowsDeviceStore(DatabasePath);
+        var device = store.Create(Profile);
+        using var client = new HttpClient(new Handler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK))));
+        var service = new RuntimeService(store, new GoogleCheckinProvider(client));
+
+        var response = await service.HandleAsync(new(1, "delete-device", DeviceId: device.Id), CancellationToken.None);
+
+        Assert.True(response.Success);
+        Assert.Equal("Deleted", response.Code);
+        Assert.Empty(store.List());
+    }
+
+    [Fact]
+    public void Pixel10ProXlProfileValidation()
+    {
+        var validPixel10 = new DeviceProfile
+        {
+            Name = "Pixel 10 Pro XL",
+            Brand = "google",
+            Manufacturer = "Google",
+            Model = "Pixel 10 Pro XL",
+            Product = "mustang",
+            Device = "mustang",
+            Hardware = "mustang",
+            Fingerprint = "google/mustang/mustang:15/AP4A.241205.013/12345678:user/release-keys",
+            SdkVersion = 35
+        };
+        validPixel10.Validate();
+        Assert.Equal("15", validPixel10.AndroidRelease);
+
+        // Mismatched codename should fail validation
+        var invalidPixel10 = validPixel10 with { Device = "caiman" };
+        Assert.Throws<ArgumentException>(() => invalidPixel10.Validate());
+    }
+
     public void Dispose()
     {
         if (!Directory.Exists(_directory)) return;

@@ -33,4 +33,13 @@ public interface IDeviceStore
     DeviceSummary[] List();
     DeviceState Get(Guid id);
     void SaveResult(Guid id, CheckinResult result);
+    void Delete(Guid id);
 }
+
+public sealed record DeviceSyncResult(bool Success, string Code, string Message, string? DeviceConfigToken = null);
+
+public interface IDeviceSyncProvider
+{
+    Task<DeviceSyncResult> UploadDeviceConfigAsync(DeviceState device, string googlePlayToken, CancellationToken cancellationToken);
+}
+

@@ -59,15 +59,17 @@ public partial class NativeLoginWindow : Window
             core.Settings.IsPasswordAutosaveEnabled = false;
             core.Settings.IsGeneralAutofillEnabled = false;
             core.Settings.AreDefaultContextMenusEnabled = false;
-            var androidVer = _device.Profile.AndroidRelease;
+            var androidVer = string.IsNullOrWhiteSpace(_device.Profile.AndroidRelease) ? "14" : _device.Profile.AndroidRelease;
             var model = string.IsNullOrWhiteSpace(_device.Profile.Model) ? "Pixel 9 Pro XL" : _device.Profile.Model;
-            core.Settings.UserAgent = $"Mozilla/5.0 (Linux; Android {androidVer}; {model}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36 MinuteMaid";
+            var buildId = string.IsNullOrWhiteSpace(_device.Profile.BuildId) ? "AD1A.240905.004" : _device.Profile.BuildId;
+            core.Settings.UserAgent = $"Mozilla/5.0 (Linux; Android {androidVer}; {model} Build/{buildId}; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/131.0.0.0 Mobile Safari/537.36 MinuteMaid";
             core.AddWebResourceRequestedFilter("https://accounts.google.com/*", CoreWebView2WebResourceContext.All);
             core.WebResourceRequested += (_, args) =>
             {
                 args.Request.Headers.SetHeader("sec-ch-ua-platform", "\"Android\"");
                 args.Request.Headers.SetHeader("sec-ch-ua-model", $"\"{model}\"");
                 args.Request.Headers.SetHeader("sec-ch-ua-mobile", "?1");
+                args.Request.Headers.SetHeader("sec-ch-ua-platform-version", $"\"{androidVer}\"");
             };
             core.PermissionRequested += (_, args) =>
             {
@@ -130,6 +132,7 @@ public partial class NativeLoginWindow : Window
             {
                 androidId = ulong.Parse(_device.GoogleAndroidId!, CultureInfo.InvariantCulture).ToString("x"),
                 sdk = _device.Profile.SdkVersion,
+                model = model,
                 accounts = deviceAccounts
             });
             await core.AddScriptToExecuteOnDocumentCreatedAsync("""
@@ -139,6 +142,42 @@ public partial class NativeLoginWindow : Window
                 """ + metadata + ";" + """
                   const notify = value => window.chrome.webview.postMessage(value);
                   const noop = () => {};
+                  try {
+                    Object.defineProperty(navigator, 'platform', { get: () => 'Linux armv8l' });
+                    Object.defineProperty(navigator, 'maxTouchPoints', { get: () => 5 });
+                    if (navigator.userAgentData) {
+                      Object.defineProperty(navigator, 'userAgentData', {
+                        get: () => ({
+                          brands: [
+                            { brand: 'Android WebView', version: '131' },
+                            { brand: 'Chromium', version: '131' },
+                            { brand: 'Not_A Brand', version: '24' }
+                          ],
+                          mobile: true,
+                          platform: 'Android',
+                          getHighEntropyValues: async hints => ({
+                            platform: 'Android',
+                            platformVersion: meta.sdk >= 35 ? '15.0.0' : '14.0.0',
+                            model: meta.model,
+                            mobile: true,
+                            architecture: 'arm64',
+                            bitness: '64'
+                          })
+                        })
+                      });
+                    }
+                    const hookWebGL = ctx => {
+                      if (!ctx || !ctx.prototype) return;
+                      const orig = ctx.prototype.getParameter;
+                      ctx.prototype.getParameter = function(param) {
+                        if (param === 37445) return 'ARM';
+                        if (param === 37446) return 'Mali-G715-Immortalis MC10';
+                        return orig.apply(this, arguments);
+                      };
+                    };
+                    hookWebGL(window.WebGLRenderingContext);
+                    hookWebGL(window.WebGL2RenderingContext);
+                  } catch (e) {}
 
                   window.mm = {
                     getAndroidId: () => meta.androidId, getBuildVersionSdk: () => meta.sdk,

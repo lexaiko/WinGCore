@@ -1,0 +1,27 @@
+/*
+ * SPDX-FileCopyrightText: 2025 e foundation / microG Project Team
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+syntax = "proto2";
+option csharp_namespace = "GManager.Providers.Google.Protocol";
+
+import "deviceconfig.proto";
+
+message UploadDeviceConfigRequest {
+  optional DeviceConfig deviceConfiguration = 1;
+  optional string manufacturer = 2;
+  optional string gcmRegistrationId = 3;
+}
+
+message UploadDeviceConfigResponse {
+  optional string deviceConfigToken = 1;
+}
+
+message GooglePlayResponsePayload {
+  optional UploadDeviceConfigResponse uploadDeviceConfigResponse = 28;
+}
+
+message GooglePlayApiResponse {
+  optional GooglePlayResponsePayload payload = 1;
+}

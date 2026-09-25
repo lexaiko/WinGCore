@@ -76,9 +76,21 @@ public sealed class GoogleNativeAuthProvider(HttpClient http) : INativeAuthProvi
             fields["app"] = "com.google.android.gm";
             fields["callerPkg"] = "com.google.android.gm";
         }
+        else if (service == NativeService.Checkin)
+        {
+            fields["app"] = "com.google.android.gsf";
+            fields["callerPkg"] = "com.google.android.gsf";
+        }
+        else if (service == NativeService.GooglePlay)
+        {
+            fields["app"] = "com.android.vending";
+            fields["callerPkg"] = "com.android.vending";
+        }
         fields["service"] = service switch
         {
             NativeService.Messaging => "ac2dm",
+            NativeService.Checkin => "ac2dm",
+            NativeService.GooglePlay => "oauth2:https://www.googleapis.com/auth/googleplay",
             NativeService.Identity => "oauth2:https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile",
             NativeService.Gmail => "oauth2:https://www.googleapis.com/auth/gmail.readonly",
             NativeService.Drive => "oauth2:https://www.googleapis.com/auth/drive.metadata.readonly",
@@ -90,6 +102,19 @@ public sealed class GoogleNativeAuthProvider(HttpClient http) : INativeAuthProvi
         fields["has_permission"] = "1";
         var (result, values) = await SendAsync(device, fields, token);
         if (result is not null) return result;
+        if (service == NativeService.Checkin)
+        {
+            var checkinToken = values.GetValueOrDefault("LSID")
+                ?? values.GetValueOrDefault("Token")
+                ?? values.GetValueOrDefault("Auth");
+            if (string.IsNullOrWhiteSpace(checkinToken))
+                return new("InvalidResponse", "Google did not return a check-in token.");
+            return new("Accepted", "Check-in token received.", Grant: new()
+            {
+                AccessToken = checkinToken,
+                ExpiresAt = DateTimeOffset.UtcNow.AddHours(24)
+            });
+        }
         return ReadGrant(values);
     }
 

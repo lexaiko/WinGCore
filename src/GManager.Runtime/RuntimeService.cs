@@ -2,7 +2,11 @@ using GManager.Contracts;
 
 namespace GManager.Runtime;
 
-public sealed class RuntimeService(IDeviceStore store, ICheckinProvider checkinProvider, NativeAccountBroker? accounts = null)
+public sealed class RuntimeService(
+    IDeviceStore store,
+    ICheckinProvider checkinProvider,
+    NativeAccountBroker? accounts = null,
+    IDeviceSyncProvider? deviceSync = null)
 {
     private readonly SemaphoreSlim _operations = new(1, 1);
 
@@ -23,6 +27,15 @@ public sealed class RuntimeService(IDeviceStore store, ICheckinProvider checkinP
                     if (request.Profile is null) return Error("InvalidRequest", "A profile is required.");
                     request.Profile.Validate();
                     return Ok("Created", "Local device created; no Google registration yet.", [store.Create(request.Profile)]);
+                case "delete-device" when request.DeviceId is { } deleteId:
+                    if (deleteId == Guid.Empty) return Error("InvalidRequest", "A device ID is required.");
+                    var sessionsOnDevice = accounts?.List().Where(x => x.DeviceId == deleteId).ToArray() ?? [];
+                    foreach (var s in sessionsOnDevice)
+                    {
+                        accounts?.Forget(s.Id);
+                    }
+                    store.Delete(deleteId);
+                    return Ok("Deleted", "Virtual device and associated sessions deleted.", store.List());
                 case "checkin":
                     if (request.DeviceId is not { } id || id == Guid.Empty)
                         return Error("InvalidRequest", "A device ID is required.");
@@ -43,6 +56,8 @@ public sealed class RuntimeService(IDeviceStore store, ICheckinProvider checkinP
                     return setup with { Success = true, Code = setup.Success ? "SignedIn" : "AccountSavedSetupPending" };
                 case "finish-setup" when accounts is not null && request.SessionId is { } setupId:
                     return await FinishSetupAsync(setupId, cancellationToken);
+                case "sync-play-device" when accounts is not null && request.SessionId is { } syncSessionId:
+                    return await SyncPlayDeviceAsync(syncSessionId, cancellationToken);
                 case "get-grant" when accounts is not null && request.SessionId is { } sessionId:
                     var auth = await accounts.GetGrantAsync(sessionId, request.Service, request.ForceRefresh, cancellationToken);
                     return new(1, auth.Success, auth.Code, auth.Message, Grant: auth.Grant);
@@ -80,7 +95,7 @@ public sealed class RuntimeService(IDeviceStore store, ICheckinProvider checkinP
         var cookies = new List<CheckinAccount>();
         foreach (var session in sessions)
         {
-            var grant = await accounts!.GetGrantAsync(session.Id, NativeService.Messaging, false, token);
+            var grant = await accounts!.GetGrantAsync(session.Id, NativeService.Checkin, false, token);
             if (!grant.Success || grant.Grant is null)
             {
                 foreach (var pending in sessions.Where(x => x.Status == NativeSessionStatus.AssociationPending))
@@ -97,8 +112,36 @@ public sealed class RuntimeService(IDeviceStore store, ICheckinProvider checkinP
         store.SaveResult(deviceId, result);
         foreach (var session in sessions.Where(x => x.Status == NativeSessionStatus.AssociationPending))
             accounts!.MarkAssociation(session.Id, result.Outcome == CheckinOutcome.Accepted, result.Error);
+        if (result.Outcome == CheckinOutcome.Accepted && deviceSync is not null)
+        {
+            foreach (var session in sessions.Where(x => x.Status == NativeSessionStatus.Active || x.Status == NativeSessionStatus.AssociationPending))
+            {
+                try
+                {
+                    var playGrant = await accounts!.GetGrantAsync(session.Id, NativeService.GooglePlay, false, token);
+                    if (playGrant.Success && playGrant.Grant is not null)
+                    {
+                        await deviceSync.UploadDeviceConfigAsync(store.Get(deviceId), playGrant.Grant.AccessToken, token);
+                    }
+                }
+                catch { /* Google Play hardware sync is non-blocking for basic check-in */ }
+            }
+        }
         return new(1, result.Outcome == CheckinOutcome.Accepted, result.Outcome.ToString(),
             result.Error ?? "Google check-in accepted.", [store.Get(deviceId).Summary]);
+    }
+
+    private async Task<RuntimeResponse> SyncPlayDeviceAsync(Guid sessionId, CancellationToken token)
+    {
+        if (deviceSync is null)
+            return Error("NotSupported", "Google Play device sync provider is not available.");
+        var session = accounts!.List().FirstOrDefault(x => x.Id == sessionId) ?? throw new KeyNotFoundException();
+        var playGrant = await accounts.GetGrantAsync(sessionId, NativeService.GooglePlay, false, token);
+        if (!playGrant.Success || playGrant.Grant is null)
+            return Error(playGrant.Code, "Google Play token request failed: " + playGrant.Message);
+        var syncResult = await deviceSync.UploadDeviceConfigAsync(store.Get(session.DeviceId), playGrant.Grant.AccessToken, token);
+        return new(1, syncResult.Success, syncResult.Code, syncResult.Message,
+            Sessions: [accounts.List().First(x => x.Id == sessionId)]);
     }
 
     private static RuntimeResponse Ok(string code, string message, DeviceSummary[]? devices = null) =>

@@ -154,6 +154,21 @@ public sealed partial class WindowsDeviceStore : IDeviceStore, INativeAccountSto
         if (command.ExecuteNonQuery() != 1) throw new KeyNotFoundException();
     }
 
+    public void Delete(Guid id)
+    {
+        using var connection = Open();
+        using var transaction = connection.BeginTransaction();
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "DELETE FROM native_sessions WHERE device_id=$id";
+        command.Parameters.AddWithValue("$id", id.ToString("N"));
+        command.ExecuteNonQuery();
+
+        command.CommandText = "DELETE FROM devices WHERE id=$id";
+        if (command.ExecuteNonQuery() == 0) throw new KeyNotFoundException();
+        transaction.Commit();
+    }
+
     private static byte[] Entropy(Guid id) => Encoding.UTF8.GetBytes($"GManager.AndroidGoogle.Registration.v1/{id:N}");
 
     private static DeviceSummary ReadSummary(SqliteDataReader reader)

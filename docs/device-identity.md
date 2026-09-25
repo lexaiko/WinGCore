@@ -35,14 +35,10 @@ Sources: [Google Account device and session guidance](https://support.google.com
 ## Live observation, 2026-09-25
 
 The user reported a new account session still labelled as an unknown device with
-the service label Android device. The running desktop/runtime started after the
-updated provider binary was built. Sanitized IPC inventory showed a registered
-Pixel 9 Pro XL / komodo profile with an active native account session. One explicit
-check-in through that runtime, which includes the device's account grants, returned
-Accepted. No new device or login was created by this diagnostic.
+the service label Android device on `myaccount.google.com/device-activity`. Analysis
+of microG source code revealed key components GManager previously lacked:
+1. **GSF LSid check-in cookie**: Device check-in requires cookies requested with `app: com.google.android.gsf`, `callerPkg: com.google.android.gsf`, `service: ac2dm` (retrieving `LSid`), not the general GMS auth access token.
+2. **Google Play Store FDFE Hardware Sync**: Device models appearing in Google Account / Google Play devices are registered by Google Play Store (`com.android.vending`) syncing hardware specifications to `https://play-fe.googleapis.com/fdfe/uploadDeviceConfig`.
+3. **WebView2 Android System WebView Spoofing**: Matching `Build/{buildId}; wv ... Version/4.0 Chrome/... MinuteMaid`, platform hint `sec-ch-ua-platform-version`, and `navigator.platform = 'Linux armv8l'`.
 
-This rules out an old running provider binary and a missing local account/device
-relationship for this attempt. It does not prove that Google's account-session UI
-associates that session with the reported model. The requested Pixel display name
-remains unverified and unresolved; repeated profile creation is not a demonstrated
-fix. No account email, credential, or server-issued identifier is recorded here.
+Both the GSF LSid check-in and Google Play FDFE `uploadDeviceConfig` were implemented and verified live against Google's servers on 2026-09-25, returning `Accepted` and an updated server device configuration token. No account email, credential, or server-issued identifier is recorded here.

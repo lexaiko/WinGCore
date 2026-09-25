@@ -15,9 +15,10 @@ describes implementation parity, not a claim of complete microG compatibility.
 | Master credential exchange | retrieveRtToken | ac2dm, ACCESS_TOKEN=1, add_account=1, get_accountid=1, explicit null DroidGuard result |
 | Local account save | AccountManager | Per-device/session DPAPI record containing master credential, account ID/name, optional SID/LSID/services; no password |
 | GMS account enrollment | retrieveGmsToken | Separate SetupAccountAsync with ac2dm, app/caller GMS, system_partition=1, has_permission=1, add_account=1, get_accountid=1, null DroidGuard result; ACCESS_TOKEN is absent |
-| Account check-in | checkin(true) | Includes email/ac2dm pairs for every account on this device; protects existing ID and persists failures |
+| Account check-in | checkin(true) | Uses GSF LSid token (app/caller `com.google.android.gsf`, service `ac2dm`); includes email/LSid pairs in check-in protobuf cookies |
+| Google Play Device Sync | vending-app / uploadDeviceConfig | Requests `oauth2:https://www.googleapis.com/auth/googleplay` (app `com.android.vending`), serializes hardware specs via protobuf to `https://play-fe.googleapis.com/fdfe/uploadDeviceConfig` |
 | Ordinary service tokens | AuthManager | Separate grant path, cache by session/service, expiry handling, force refresh and revocation state |
-| Retry | Account lifecycle recovery | finish-setup IPC/CLI and Finish account setup UI reuse the saved credential; no new device or browser login required unless revoked |
+| Retry | Account lifecycle recovery | finish-setup and sync-play-device IPC/CLI and UI reuse the saved credential; no new device or browser login required unless revoked |
 
 The `system_partition` field mirrors microG's enrollment request convention; it is
 not Windows hardware attestation or evidence that Android system services exist.
@@ -80,15 +81,16 @@ encrypted metadata persistence, retained pending state, retry after process-stat
 recreation, all-account check-in, rejection without registration loss, origin and
 completion URL checks, profile consistency and current SDK parsing.
 
-On 2026-09-25 the new runtime executed finish-setup for the user's existing Pixel
-9 Pro XL testing session. Google accepted dedicated GMS enrollment and subsequent
-account check-in; the saved state is Active. No new account login or device was
-created by this test. Google Account's displayed model remains to be confirmed.
+On 2026-09-25 the runtime executed live verification for the user's existing Pixel
+9 Pro XL testing session:
+1. GSF LSid check-in grant (`app: com.google.android.gsf`, `service: ac2dm`): Google accepted and returned check-in token.
+2. Account-associated device check-in: Google returned `Accepted`.
+3. Google Play auth grant (`app: com.android.vending`, `service: oauth2:https://www.googleapis.com/auth/googleplay`): Google accepted and returned Play Store OAuth2 token.
+4. Google Play FDFE hardware sync (`https://play-fe.googleapis.com/fdfe/uploadDeviceConfig`): Google Play FDFE accepted the Pixel 9 Pro XL hardware configuration and returned an updated device configuration token.
 
 Normal test runs skip network/account tests. Set GMANAGER_RUN_LIVE_TESTS=1 explicitly
 to enable those tests; they use the current Windows user's existing test session.
 No master credential, login cookie, SID/LSID or API response body belongs in reports.
 
-Final local validation: 51 runtime tests and 54 desktop tests passed, with the four
-live network/account tests explicitly skipped. The live setup/check-in observation
-above was a separate controlled request through the running user-scoped runtime.
+Final local validation: 56 runtime tests and 54 desktop tests passed (110 total passed),
+with live network/account tests explicitly skipped during normal CI/local test runs.
