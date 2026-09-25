@@ -81,9 +81,9 @@
                             Width="52"
                             Height="52"
                             CornerRadius="26"
-                            BorderBrush="#1A73E8"
-                            BorderThickness="2"
-                            Background="#1A73E8"
+                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1"
+                            Background="{StaticResource AppleAccentBrush}"
                             ClipToBounds="True"
                             VerticalAlignment="Center">
                         <Grid>
@@ -155,11 +155,11 @@
                                                 Width="36"
                                                 Height="36"
                                                 CornerRadius="18"
-                                                Background="#E8F0FE"
+                                                Background="{StaticResource AppleSubtleAccentBrush}"
                                                 ClipToBounds="True">
                                             <Grid>
                                                 <TextBlock Text="{Binding Initials}"
-                                                           Foreground="#1A73E8"
+                                                           Foreground="{StaticResource AppleAccentBrush}"
                                                            FontSize="13"
                                                            FontWeight="SemiBold"
                                                            HorizontalAlignment="Center"

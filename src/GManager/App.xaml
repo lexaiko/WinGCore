@@ -9,6 +9,7 @@
                 <ui:ThemesDictionary Theme="Dark" />
                 <ui:ControlsDictionary />
                 <ResourceDictionary Source="pack://application:,,,/Assets/Icons.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/Assets/GlassStyles.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <!-- Global Value Converters -->

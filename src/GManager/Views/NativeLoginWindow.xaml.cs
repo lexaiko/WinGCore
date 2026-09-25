@@ -5,10 +5,11 @@ using System.Windows;
 using GManager.Auth;
 using GManager.Contracts;
 using Microsoft.Web.WebView2.Core;
+using Wpf.Ui.Controls;
 
 namespace GManager.Views;
 
-public partial class NativeLoginWindow : Window
+public partial class NativeLoginWindow : FluentWindow
 {
     private readonly NativeRuntimeClient _client;
     private readonly DeviceSummary _device;

@@ -5,10 +5,11 @@ using System.Windows.Controls;
 using GManager.Auth;
 using GManager.Contracts;
 using Microsoft.Win32;
+using Wpf.Ui.Controls;
 
 namespace GManager.Views;
 
-public partial class NativeDevicesWindow : Window
+public partial class NativeDevicesWindow : FluentWindow
 {
     private readonly NativeRuntimeClient _client;
     private readonly CancellationTokenSource _lifetime = new();
@@ -200,7 +201,7 @@ public partial class NativeDevicesWindow : Window
     private async void DeleteDevice(object sender, RoutedEventArgs e) => await RunAsync(async () =>
     {
         var device = Device();
-        if (MessageBox.Show(this, $"Delete virtual device '{device.Profile.Name}' ({device.Profile.Model}) and its associated local sessions? Google-side access remains managed in your Google account.", "Delete virtual device", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+        if (System.Windows.MessageBox.Show(this, $"Delete virtual device '{device.Profile.Name}' ({device.Profile.Model}) and its associated local sessions? Google-side access remains managed in your Google account.", "Delete virtual device", System.Windows.MessageBoxButton.YesNo, MessageBoxImage.Warning) != System.Windows.MessageBoxResult.Yes)
         {
             Status.Text = "Deletion cancelled.";
             return;
@@ -285,7 +286,7 @@ public partial class NativeDevicesWindow : Window
     private async void RemoveSession(object sender, RoutedEventArgs e) => await RunAsync(async () =>
     {
         var session = Session();
-        if (MessageBox.Show(this, $"Remove the local session for {session.Email}? Google-side access remains managed in your Google account.", "Remove local session", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+        if (System.Windows.MessageBox.Show(this, $"Remove the local session for {session.Email}? Google-side access remains managed in your Google account.", "Remove local session", System.Windows.MessageBoxButton.YesNo, MessageBoxImage.Question) != System.Windows.MessageBoxResult.Yes)
         { Status.Text = "Removal cancelled."; return; }
         await _client.SendAsync(new(1, "forget-session", SessionId: session.Id), _lifetime.Token);
         if (SelectedSession?.Id == session.Id) SelectedSession = null;

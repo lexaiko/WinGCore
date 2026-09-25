@@ -37,10 +37,10 @@
                         <Border Width="44"
                                 Height="44"
                                 CornerRadius="22"
-                                Background="#E8F0FE"
+                                Background="{StaticResource AppleSubtleAccentBrush}"
                                 VerticalAlignment="Center">
                             <Path Data="{StaticResource GeoCloud}"
-                                  Fill="#1A73E8"
+                                  Fill="{StaticResource AppleAccentBrush}"
                                   Width="22"
                                   Height="22"
                                   Stretch="Uniform"
@@ -63,17 +63,18 @@
                     <Grid Grid.Row="1" Margin="0,4,0,16">
                         <ProgressBar Value="{Binding UsagePercentage, Mode=OneWay}"
                                      Maximum="100"
-                                     Height="10"
-                                     Foreground="#1A73E8"
+                                     Height="8"
+                                     Foreground="{StaticResource AppleAccentBrush}"
                                      Background="{DynamicResource SubtleFillColorSecondaryBrush}" />
                     </Grid>
 
                     <!-- Row 2: Refresh action -->
-                    <ui:Button Grid.Row="2"
-                               Command="{Binding RefreshQuotaCommand}"
-                               HorizontalAlignment="Left"
-                               Padding="12,6"
-                               Margin="0,0,0,4">
+                    <Button Grid.Row="2"
+                            Command="{Binding RefreshQuotaCommand}"
+                            Style="{StaticResource AppleSecondaryButtonStyle}"
+                            HorizontalAlignment="Left"
+                            Padding="12,6"
+                            Margin="0,0,0,4">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Path Data="{StaticResource GeoRefresh}"
                                   Fill="{DynamicResource TextFillColorPrimaryBrush}"
@@ -84,7 +85,7 @@
                                   VerticalAlignment="Center" />
                             <TextBlock Text="Check Quota" FontSize="12.5" FontWeight="Medium" VerticalAlignment="Center" />
                         </StackPanel>
-                    </ui:Button>
+                    </Button>
                 </Grid>
             </Border>
 
@@ -110,16 +111,17 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <Ellipse Grid.Column="0" Width="10" Height="10" Fill="#1A73E8" VerticalAlignment="Center" Margin="0,0,14,0" />
+                        <Ellipse Grid.Column="0" Width="10" Height="10" Fill="{StaticResource AppleAccentBrush}" VerticalAlignment="Center" Margin="0,0,14,0" />
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                             <TextBlock Text="Google Drive" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
                             <TextBlock Text="Docs, Sheets, Slides, and files" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                         </StackPanel>
-                        <ui:Button Grid.Column="2"
-                                   Command="{Binding OpenDriveInBrowserCommand}"
-                                   Padding="12,6"
-                                   FontSize="12"
-                                   Content="Open Drive" />
+                        <Button Grid.Column="2"
+                                Command="{Binding OpenDriveInBrowserCommand}"
+                                Style="{StaticResource AppleSecondaryButtonStyle}"
+                                Padding="12,6"
+                                FontSize="12"
+                                Content="Open Drive" />
                     </Grid>
 
                     <Border Height="1" Background="{DynamicResource DividerStrokeColorDefaultBrush}" Margin="42,0,0,0" />
@@ -131,7 +133,7 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <Ellipse Grid.Column="0" Width="10" Height="10" Fill="#EA4335" VerticalAlignment="Center" Margin="0,0,14,0" />
+                        <Ellipse Grid.Column="0" Width="10" Height="10" Fill="{StaticResource AppleDangerBrush}" VerticalAlignment="Center" Margin="0,0,14,0" />
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                             <TextBlock Text="Gmail" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
                             <TextBlock Text="Messages and attachments, including Spam and Trash" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
@@ -147,7 +149,7 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <Ellipse Grid.Column="0" Width="10" Height="10" Fill="#FBBC04" VerticalAlignment="Center" Margin="0,0,14,0" />
+                        <Ellipse Grid.Column="0" Width="10" Height="10" Fill="{StaticResource AppleWarningBrush}" VerticalAlignment="Center" Margin="0,0,14,0" />
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                             <TextBlock Text="Google Photos" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
                             <TextBlock Text="Original quality photos and videos" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
@@ -169,13 +171,13 @@
                         <TextBlock Text="Need more space?" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
                         <TextBlock Text="Upgrade storage or clean up files using Google One." FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,2,0,0" />
                     </StackPanel>
-                    <ui:Button Grid.Column="1"
-                               Command="{Binding OpenGoogleOneInBrowserCommand}"
-                               Appearance="Primary"
-                               Padding="14,8"
-                               FontSize="12.5"
-                               FontWeight="Medium"
-                               Content="Google One" />
+                    <Button Grid.Column="1"
+                            Command="{Binding OpenGoogleOneInBrowserCommand}"
+                            Style="{StaticResource ApplePrimaryButtonStyle}"
+                            Padding="14,8"
+                            FontSize="12.5"
+                            FontWeight="Medium"
+                            Content="Google One" />
                 </Grid>
             </Border>
         </StackPanel>

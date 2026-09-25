@@ -65,88 +65,131 @@
                 </ui:Button>
             </Grid>
 
-            <!-- Filter Chips (All / Unread / Starred) -->
-            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
-                <ui:Button Command="{Binding SetFilterCommand}"
-                           CommandParameter="All"
-                           Content="All"
-                           FontSize="12"
-                           FontWeight="Medium"
-                           Padding="12,5"
-                           Margin="0,0,6,0"
-                           CornerRadius="14"
-                           BorderThickness="1"
-                           Cursor="Hand">
-                    <ui:Button.Style>
-                        <Style TargetType="ui:Button">
-                            <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
-                            <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
-                            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsAllFilter}" Value="True">
-                                    <Setter Property="Background" Value="#1A73E8" />
-                                    <Setter Property="BorderBrush" Value="#1A73E8" />
-                                    <Setter Property="Foreground" Value="#FFFFFF" />
-                                    <Setter Property="FontWeight" Value="SemiBold" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </ui:Button.Style>
-                </ui:Button>
+            <!-- macOS Segmented Control (All / Unread / Starred) -->
+            <Border Grid.Row="1"
+                    Background="{DynamicResource SubtleFillColorSecondaryBrush}"
+                    CornerRadius="8"
+                    Padding="2"
+                    Margin="0,0,0,10">
+                <UniformGrid Columns="3">
+                    <!-- Tab: All -->
+                    <Button Command="{Binding SetFilterCommand}"
+                            CommandParameter="All"
+                            Content="All"
+                            FontSize="12"
+                            Padding="0,5"
+                            Cursor="Hand">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+                                <Setter Property="FontWeight" Value="Medium" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="TabBorder"
+                                                    Background="{TemplateBinding Background}"
+                                                    BorderBrush="Transparent"
+                                                    BorderThickness="1"
+                                                    CornerRadius="6"
+                                                    Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <DataTrigger Binding="{Binding IsAllFilter}" Value="True">
+                                                    <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}" />
+                                                    <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
+                                                    <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                                </DataTrigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                    </Button>
 
-                <ui:Button Command="{Binding SetFilterCommand}"
-                           CommandParameter="Unread"
-                           Content="Unread"
-                           FontSize="12"
-                           FontWeight="Medium"
-                           Padding="12,5"
-                           Margin="0,0,6,0"
-                           CornerRadius="14"
-                           BorderThickness="1"
-                           Cursor="Hand">
-                    <ui:Button.Style>
-                        <Style TargetType="ui:Button">
-                            <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
-                            <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
-                            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsUnreadFilter}" Value="True">
-                                    <Setter Property="Background" Value="#1A73E8" />
-                                    <Setter Property="BorderBrush" Value="#1A73E8" />
-                                    <Setter Property="Foreground" Value="#FFFFFF" />
-                                    <Setter Property="FontWeight" Value="SemiBold" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </ui:Button.Style>
-                </ui:Button>
+                    <!-- Tab: Unread -->
+                    <Button Command="{Binding SetFilterCommand}"
+                            CommandParameter="Unread"
+                            Content="Unread"
+                            FontSize="12"
+                            Padding="0,5"
+                            Cursor="Hand">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+                                <Setter Property="FontWeight" Value="Medium" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="TabBorder"
+                                                    Background="{TemplateBinding Background}"
+                                                    BorderBrush="Transparent"
+                                                    BorderThickness="1"
+                                                    CornerRadius="6"
+                                                    Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <DataTrigger Binding="{Binding IsUnreadFilter}" Value="True">
+                                                    <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}" />
+                                                    <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
+                                                    <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                                </DataTrigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                    </Button>
 
-                <ui:Button Command="{Binding SetFilterCommand}"
-                           CommandParameter="Starred"
-                           Content="Starred"
-                           FontSize="12"
-                           FontWeight="Medium"
-                           Padding="12,5"
-                           CornerRadius="14"
-                           BorderThickness="1"
-                           Cursor="Hand">
-                    <ui:Button.Style>
-                        <Style TargetType="ui:Button">
-                            <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
-                            <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
-                            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsStarredFilter}" Value="True">
-                                    <Setter Property="Background" Value="#E37400" />
-                                    <Setter Property="BorderBrush" Value="#E37400" />
-                                    <Setter Property="Foreground" Value="#FFFFFF" />
-                                    <Setter Property="FontWeight" Value="SemiBold" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </ui:Button.Style>
-                </ui:Button>
-            </StackPanel>
+                    <!-- Tab: Starred -->
+                    <Button Command="{Binding SetFilterCommand}"
+                            CommandParameter="Starred"
+                            Content="Starred"
+                            FontSize="12"
+                            Padding="0,5"
+                            Cursor="Hand">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+                                <Setter Property="FontWeight" Value="Medium" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="TabBorder"
+                                                    Background="{TemplateBinding Background}"
+                                                    BorderBrush="Transparent"
+                                                    BorderThickness="1"
+                                                    CornerRadius="6"
+                                                    Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <DataTrigger Binding="{Binding IsStarredFilter}" Value="True">
+                                                    <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}" />
+                                                    <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
+                                                    <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                                </DataTrigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </UniformGrid>
+            </Border>
 
             <!-- Message List Card -->
             <Border Grid.Row="2"
@@ -163,11 +206,11 @@
                         <Border Width="56"
                                 Height="56"
                                 CornerRadius="28"
-                                Background="#141A73E8"
+                                Background="{StaticResource AppleSubtleAccentBrush}"
                                 HorizontalAlignment="Center"
                                 Margin="0,0,0,14">
                             <Path Data="{StaticResource GeoCheckmark}"
-                                  Fill="#1A73E8"
+                                  Fill="{StaticResource AppleAccentBrush}"
                                   Width="24"
                                   Height="24"
                                   Stretch="Uniform"
@@ -217,9 +260,9 @@
                                                     <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
                                                 </Trigger>
                                                 <Trigger Property="IsSelected" Value="True">
-                                                    <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
-                                                    <Setter TargetName="ItemBorder" Property="BorderBrush" Value="#1A73E8" />
-                                                    <Setter TargetName="ItemBorder" Property="BorderThickness" Value="3,0,0,1" />
+                                                    <Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource AppleSubtleAccentBrush}" />
+                                                    <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{DynamicResource DividerStrokeColorDefaultBrush}" />
+                                                    <Setter TargetName="ItemBorder" Property="BorderThickness" Value="0,0,0,1" />
                                                 </Trigger>
                                             </ControlTemplate.Triggers>
                                         </ControlTemplate>
@@ -242,7 +285,7 @@
                                     <Ellipse Grid.Column="0"
                                              Width="7"
                                              Height="7"
-                                             Fill="#1A73E8"
+                                             Fill="{StaticResource AppleAccentBrush}"
                                              VerticalAlignment="Center"
                                              Margin="0,0,8,0"
                                              Visibility="{Binding IsUnread, Converter={StaticResource BoolToVisibilityConverter}}" />
@@ -256,13 +299,13 @@
                                             Width="34"
                                             Height="34"
                                             CornerRadius="17"
-                                            Background="#E8F0FE"
+                                            Background="{StaticResource AppleSubtleAccentBrush}"
                                             VerticalAlignment="Top"
                                             Margin="0,2,10,0">
                                         <TextBlock Text="{Binding SenderInitials}"
                                                    FontSize="12"
                                                    FontWeight="Bold"
-                                                   Foreground="#1A73E8"
+                                                   Foreground="{StaticResource AppleAccentBrush}"
                                                    HorizontalAlignment="Center"
                                                    VerticalAlignment="Center" />
                                     </Border>
@@ -336,7 +379,7 @@
                                         <Grid>
                                             <!-- Starred (Filled Yellow) -->
                                             <Path Data="{StaticResource GeoStar}"
-                                                  Fill="#F4B400"
+                                                  Fill="{StaticResource AppleWarningBrush}"
                                                   Width="14"
                                                   Height="14"
                                                   Stretch="Uniform"
@@ -424,7 +467,7 @@
 
                     <!-- Row 0: Action Toolbar -->
                     <Border Grid.Row="0"
-                            Padding="16,10"
+                            Padding="12,8"
                             BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
                             BorderThickness="0,0,0,1"
                             Background="{DynamicResource SubtleFillColorTertiaryBrush}">
@@ -436,47 +479,45 @@
                             </Grid.ColumnDefinitions>
 
                             <!-- Close / Deselect Button -->
-                            <ui:Button Grid.Column="0"
-                                       Command="{Binding CloseDetailCommand}"
-                                       ToolTip="Close message"
-                                       Padding="8,6"
-                                       CornerRadius="6">
+                            <Button Grid.Column="0"
+                                    Command="{Binding CloseDetailCommand}"
+                                    ToolTip="Close message"
+                                    Style="{StaticResource AppleToolbarButtonStyle}">
                                 <Path Data="{StaticResource GeoDismiss}"
-                                      Fill="{DynamicResource TextFillColorPrimaryBrush}"
-                                      Width="12"
-                                      Height="12"
+                                      Fill="{DynamicResource TextFillColorSecondaryBrush}"
+                                      Width="11"
+                                      Height="11"
                                       Stretch="Uniform" />
-                            </ui:Button>
+                            </Button>
 
-                            <!-- Right Toolbar Buttons -->
+                            <!-- Right Toolbar Buttons (macOS Mail style) -->
                             <StackPanel Grid.Column="2" Orientation="Horizontal">
                                 <!-- Reply Button -->
-                                <ui:Button Command="{Binding StartReplyCommand}"
-                                           Margin="4,0"
-                                           Padding="12,6"
-                                           CornerRadius="6"
-                                           ToolTip="Reply directly">
-                                    <StackPanel Orientation="Horizontal">
+                                <Button Command="{Binding StartReplyCommand}"
+                                        Margin="2,0"
+                                        Style="{StaticResource AppleToolbarButtonStyle}"
+                                        ToolTip="Reply directly">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                         <Path Data="{StaticResource GeoReply}"
                                               Fill="{DynamicResource TextFillColorPrimaryBrush}"
                                               Width="12"
                                               Height="12"
                                               Stretch="Uniform"
-                                              Margin="0,0,6,0" />
-                                        <TextBlock Text="Reply" FontSize="12.5" FontWeight="Medium" />
+                                              Margin="0,0,6,0"
+                                              VerticalAlignment="Center" />
+                                        <TextBlock Text="Reply" FontSize="12" FontWeight="Medium" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center" />
                                     </StackPanel>
-                                </ui:Button>
+                                </Button>
 
                                 <!-- Star Button -->
-                                <ui:Button Command="{Binding ToggleStarCommand}"
-                                           CommandParameter="{Binding SelectedMessage}"
-                                           Margin="4,0"
-                                           Padding="8,6"
-                                           CornerRadius="6"
-                                           ToolTip="Star / Unstar">
+                                <Button Command="{Binding ToggleStarCommand}"
+                                        CommandParameter="{Binding SelectedMessage}"
+                                        Margin="2,0"
+                                        Style="{StaticResource AppleToolbarButtonStyle}"
+                                        ToolTip="Star / Unstar">
                                     <Grid>
                                         <Path Data="{StaticResource GeoStar}"
-                                              Fill="#F4B400"
+                                              Fill="{StaticResource AppleWarningBrush}"
                                               Width="13"
                                               Height="13"
                                               Stretch="Uniform"
@@ -488,49 +529,46 @@
                                               Stretch="Uniform"
                                               Visibility="{Binding SelectedMessage.IsStarred, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
                                     </Grid>
-                                </ui:Button>
+                                </Button>
 
                                 <!-- Mark as Unread Button -->
-                                <ui:Button Command="{Binding MarkAsReadCommand}"
-                                           CommandParameter="{Binding SelectedMessage}"
-                                           Margin="4,0"
-                                           Padding="8,6"
-                                           CornerRadius="6"
-                                           ToolTip="Mark as read">
+                                <Button Command="{Binding MarkAsReadCommand}"
+                                        CommandParameter="{Binding SelectedMessage}"
+                                        Margin="2,0"
+                                        Style="{StaticResource AppleToolbarButtonStyle}"
+                                        ToolTip="Mark as read / unread">
                                     <Path Data="{StaticResource GeoCheckmark}"
-                                          Fill="#1A73E8"
+                                          Fill="{StaticResource AppleAccentBrush}"
                                           Width="13"
                                           Height="13"
                                           Stretch="Uniform" />
-                                </ui:Button>
+                                </Button>
 
                                 <!-- Trash Button -->
-                                <ui:Button Command="{Binding TrashMessageCommand}"
-                                           CommandParameter="{Binding SelectedMessage}"
-                                           Margin="4,0"
-                                           Padding="8,6"
-                                           CornerRadius="6"
-                                           ToolTip="Delete message">
+                                <Button Command="{Binding TrashMessageCommand}"
+                                        CommandParameter="{Binding SelectedMessage}"
+                                        Margin="2,0"
+                                        Style="{StaticResource AppleToolbarButtonStyle}"
+                                        ToolTip="Delete message">
                                     <Path Data="{StaticResource GeoTrash}"
-                                          Fill="#D93025"
+                                          Fill="{StaticResource AppleDangerBrush}"
                                           Width="13"
                                           Height="13"
                                           Stretch="Uniform" />
-                                </ui:Button>
+                                </Button>
 
                                 <!-- Open in Web Browser -->
-                                <ui:Button Command="{Binding OpenInBrowserCommand}"
-                                           CommandParameter="{Binding SelectedMessage}"
-                                           Margin="4,0"
-                                           Padding="8,6"
-                                           CornerRadius="6"
-                                           ToolTip="Open in Gmail Web">
+                                <Button Command="{Binding OpenInBrowserCommand}"
+                                        CommandParameter="{Binding SelectedMessage}"
+                                        Margin="2,0"
+                                        Style="{StaticResource AppleToolbarButtonStyle}"
+                                        ToolTip="Open in Gmail Web">
                                     <Path Data="{StaticResource GeoOpenInNew}"
                                           Fill="{DynamicResource TextFillColorSecondaryBrush}"
                                           Width="13"
                                           Height="13"
                                           Stretch="Uniform" />
-                                </ui:Button>
+                                </Button>
                             </StackPanel>
                         </Grid>
                     </Border>
@@ -550,8 +588,8 @@
                             <!-- Subject Title -->
                             <TextBlock Grid.Row="0"
                                        Text="{Binding SelectedMessage.Subject}"
-                                       FontSize="19"
-                                       FontWeight="Bold"
+                                       FontSize="18"
+                                       FontWeight="SemiBold"
                                        Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                                        TextWrapping="Wrap"
                                        Margin="0,0,0,12" />
@@ -566,16 +604,16 @@
 
                                 <!-- Sender Avatar -->
                                 <Border Grid.Column="0"
-                                        Width="40"
-                                        Height="40"
-                                        CornerRadius="20"
-                                        Background="#E8F0FE"
+                                        Width="38"
+                                        Height="38"
+                                        CornerRadius="19"
+                                        Background="{StaticResource AppleSubtleAccentBrush}"
                                         Margin="0,0,12,0"
                                         VerticalAlignment="Center">
                                     <TextBlock Text="{Binding SelectedMessage.SenderInitials}"
-                                               FontSize="14"
+                                               FontSize="13"
                                                FontWeight="Bold"
-                                               Foreground="#1A73E8"
+                                               Foreground="{StaticResource AppleAccentBrush}"
                                                HorizontalAlignment="Center"
                                                VerticalAlignment="Center" />
                                 </Border>
@@ -583,7 +621,7 @@
                                 <!-- Sender Name and Address -->
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding SelectedMessage.SenderName}"
-                                               FontSize="14"
+                                               FontSize="13.5"
                                                FontWeight="SemiBold"
                                                Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
                                     <TextBlock Text="{Binding SelectedMessage.SenderEmail}"
@@ -603,7 +641,7 @@
                             <!-- Recipients Details -->
                             <StackPanel Grid.Row="2"
                                         Orientation="Horizontal"
-                                        Margin="52,2,0,0"
+                                        Margin="50,2,0,0"
                                         Visibility="{Binding SelectedMessage.RecipientTo, Converter={StaticResource StringNotEmptyToVisibilityConverter}}">
                                 <TextBlock Text="To: "
                                            FontSize="12"
@@ -620,7 +658,8 @@
                     <!-- Row 2: Loading State -->
                     <ProgressBar Grid.Row="2"
                                  IsIndeterminate="True"
-                                 Height="3"
+                                 Height="2"
+                                 Foreground="{StaticResource AppleAccentBrush}"
                                  Visibility="{Binding IsLoadingDetail, Converter={StaticResource BoolToVisibilityConverter}}" />
 
                     <!-- Row 3: Rich Message Body -->
@@ -687,7 +726,7 @@
 
                                                 <Path Grid.Column="0"
                                                       Data="{StaticResource GeoAttach}"
-                                                      Fill="#1A73E8"
+                                                      Fill="{StaticResource AppleAccentBrush}"
                                                       Width="14"
                                                       Height="14"
                                                       Stretch="Uniform"
@@ -758,31 +797,26 @@
                                         Margin="0,0,0,10" />
 
                             <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
-                                <ui:Button Command="{Binding CancelReplyCommand}"
-                                           Content="Cancel"
-                                           Margin="0,0,8,0"
-                                           Padding="14,6"
-                                           CornerRadius="6" />
+                                <Button Command="{Binding CancelReplyCommand}"
+                                        Content="Cancel"
+                                        Style="{StaticResource AppleSecondaryButtonStyle}"
+                                        Margin="0,0,8,0"
+                                        Padding="14,6" />
 
-                                <ui:Button Command="{Binding SendReplyCommand}"
-                                           Padding="16,6"
-                                           CornerRadius="6">
-                                    <StackPanel Orientation="Horizontal">
+                                <Button Command="{Binding SendReplyCommand}"
+                                        Style="{StaticResource ApplePrimaryButtonStyle}"
+                                        Padding="16,6">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                         <Path Data="{StaticResource GeoSend}"
                                               Fill="#FFFFFF"
                                               Width="12"
                                               Height="12"
                                               Stretch="Uniform"
-                                              Margin="0,0,6,0" />
-                                        <TextBlock Text="Send" FontWeight="SemiBold" Foreground="#FFFFFF" />
+                                              Margin="0,0,6,0"
+                                              VerticalAlignment="Center" />
+                                        <TextBlock Text="Send" FontWeight="SemiBold" Foreground="#FFFFFF" VerticalAlignment="Center" />
                                     </StackPanel>
-                                    <ui:Button.Style>
-                                        <Style TargetType="ui:Button">
-                                            <Setter Property="Background" Value="#1A73E8" />
-                                            <Setter Property="BorderBrush" Value="#1A73E8" />
-                                        </Style>
-                                    </ui:Button.Style>
-                                </ui:Button>
+                                </Button>
                             </StackPanel>
                         </Grid>
                     </Border>

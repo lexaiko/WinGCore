@@ -28,23 +28,33 @@ public static class WebBrowserHelper
                 <html>
                 <head>
                 <meta charset="utf-8" />
+                <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <style>
+                  html, body {
+                    overflow-x: hidden !important;
+                    margin: 0;
+                    padding: 20px 24px;
+                    -ms-overflow-style: -ms-autohiding-scrollbar;
+                  }
                   body {
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-                    font-size: 14px;
+                    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                    font-size: 13.5px;
                     line-height: 1.6;
-                    margin: 16px;
-                    color: #202124;
-                    background: #ffffff;
+                    color: #1d1d1f;
+                    background: transparent;
                     word-wrap: break-word;
+                    word-break: break-word;
                   }
                   @media (prefers-color-scheme: dark) {
-                    body { background: #1e1e1e; color: #e1e1e1; }
-                    a { color: #8ab4f8; }
+                    body { color: #e5e5ea; }
+                    a { color: #0a84ff; }
                   }
-                  img { max-width: 100%; height: auto; }
-                  table { max-width: 100%; }
-                  pre, code { white-space: pre-wrap; font-family: Consolas, monospace; }
+                  img { max-width: 100% !important; height: auto; }
+                  table { max-width: 100% !important; }
+                  td, th { word-wrap: break-word; word-break: break-word; }
+                  pre, code { white-space: pre-wrap; font-family: "SF Mono", Consolas, monospace; font-size: 12px; }
+                  * { box-sizing: border-box; }
                 </style>
                 </head>
                 <body>

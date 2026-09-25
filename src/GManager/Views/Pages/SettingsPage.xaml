@@ -40,19 +40,17 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,3">
-                                <Ellipse Width="7" Height="7" Fill="#0F9D58" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                <Ellipse Width="7" Height="7" Fill="{StaticResource AppleSuccessBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
                                 <TextBlock Text="Google MCS Push Transport" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
                             </StackPanel>
                             <TextBlock Text="{Binding McsStatusText}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                         </StackPanel>
                         <Border Grid.Column="1"
-                                Background="#140F9D58"
-                                BorderBrush="#0F9D58"
-                                BorderThickness="1"
+                                Background="{StaticResource AppleSubtleSuccessBrush}"
                                 CornerRadius="6"
                                 Padding="8,4"
                                 VerticalAlignment="Center">
-                            <TextBlock Text="ONLINE" FontSize="11" FontWeight="Bold" Foreground="#0F9D58" />
+                            <TextBlock Text="ONLINE" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AppleSuccessBrush}" />
                         </Border>
                     </Grid>
 
@@ -222,13 +220,11 @@
                             <TextBlock Text="Instant push notifications, auto-sync on Windows wake &amp; network reconnect. Zero periodic battery drain." FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
                         </StackPanel>
                         <Border Grid.Column="1"
-                                Background="#140F9D58"
-                                BorderBrush="#0F9D58"
-                                BorderThickness="1"
+                                Background="{StaticResource AppleSubtleSuccessBrush}"
                                 CornerRadius="6"
                                 Padding="8,4"
                                 VerticalAlignment="Center">
-                            <TextBlock Text="ACTIVE" FontSize="11" FontWeight="Bold" Foreground="#0F9D58" />
+                            <TextBlock Text="ACTIVE" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AppleSuccessBrush}" />
                         </Border>
                     </Grid>
                 </StackPanel>
@@ -289,13 +285,13 @@
                             Margin="14,0,0,0"
                             Visibility="{Binding SaveSuccess, Converter={StaticResource BoolToVisibilityConverter}}">
                     <Path Data="{StaticResource GeoCheckmark}"
-                          Fill="#0F9D58"
+                          Fill="{StaticResource AppleSuccessBrush}"
                           Width="14"
                           Height="14"
                           Stretch="Uniform"
                           Margin="0,0,6,0"
                           VerticalAlignment="Center" />
-                    <TextBlock Text="Preferences saved successfully" Foreground="#0F9D58" FontWeight="Medium" FontSize="12.5" VerticalAlignment="Center" />
+                    <TextBlock Text="Preferences saved successfully" Foreground="{StaticResource AppleSuccessBrush}" FontWeight="Medium" FontSize="12.5" VerticalAlignment="Center" />
                 </StackPanel>
             </Grid>
 
