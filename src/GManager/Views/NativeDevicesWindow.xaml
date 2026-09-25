@@ -20,7 +20,7 @@
                 <TextBlock x:Name="DeviceInfo" TextWrapping="Wrap" Margin="0,8,0,10"/>
             </StackPanel>
             <WrapPanel Grid.Row="1" Margin="0,0,0,18">
-                <Button Content="New lab device" Click="NewDevice" Padding="12,7" Margin="0,0,8,8"/>
+                <Button Content="New Pixel 9 Pro XL profile" Click="NewDevice" Padding="12,7" Margin="0,0,8,8"/>
                 <Button Content="Import profile" Click="Import" Padding="12,7" Margin="0,0,8,8"/>
                 <Button Content="Export profile" Click="Export" Padding="12,7" Margin="0,0,8,8"/>
                 <Button Content="Register / check in" Click="Checkin" Padding="12,7" Margin="0,0,8,8"/>
@@ -40,6 +40,7 @@
                 <Button Content="Test service access" Click="TestAccess" Padding="12,7" Margin="0,0,8,8"/>
                 <Button Content="Remove local session" Click="RemoveSession" Padding="12,7" Margin="0,0,8,8"/>
                 <Button Content="Refresh" Click="Refresh" Padding="12,7" Margin="0,0,8,8"/>
+                <Button Content="Finish account setup" Click="FinishSetup" Padding="12,7" Margin="0,0,8,8"/>
             </WrapPanel>
         </Grid>
         <DockPanel Grid.Row="2" Margin="0,18,0,0" LastChildFill="True">

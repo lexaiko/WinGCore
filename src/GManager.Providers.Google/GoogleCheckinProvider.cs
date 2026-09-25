@@ -40,13 +40,16 @@ public sealed class GoogleCheckinProvider(HttpClient httpClient) : ICheckinProvi
         checkin.Event.Add(evt);
         var config = new DeviceConfig
         {
-            TouchScreen = 3, KeyboardType = 1, Navigation = 1, ScreenLayout = 2,
+            TouchScreen = 3, KeyboardType = 1, Navigation = 1, ScreenLayout = profile.ScreenLayout,
             HasHardKeyboard = false, HasFiveWayNavigation = false,
             WidthPixels = profile.WidthPixels, HeightPixels = profile.HeightPixels,
-            DensityDpi = profile.DensityDpi, GlEsVersion = 0x30000
+            DensityDpi = profile.DensityDpi, GlEsVersion = profile.GlEsVersion
         };
         config.NativePlatform.Add(profile.NativePlatforms);
-        config.Locale.Add(profile.Locale.Replace('_', '-'));
+        config.Locale.Add(profile.Locales.Length > 0 ? profile.Locales : [profile.Locale.Replace('_', '-')]);
+        config.AvailableFeature.Add(profile.AvailableFeatures);
+        config.SharedLibrary.Add(profile.SharedLibraries);
+        config.GlExtension.Add(profile.GlExtensions);
         var request = new CheckinRequest
         {
             AndroidId = unchecked((long)(previous?.AndroidId ?? 0)), Digest = previous?.Digest ?? "",
@@ -63,7 +66,10 @@ public sealed class GoogleCheckinProvider(HttpClient httpClient) : ICheckinProvi
             }
         }
         else request.AccountCookie.Add("");
-        request.OtaCert.Add(profile.OtaCertificates);
+        if (profile.OtaCertificates is { Length: > 0 })
+            request.OtaCert.Add(profile.OtaCertificates);
+        else
+            request.OtaCert.Add("71Q6Rn2DDZl1zPDVaaeEHItd");
         if (previous is not null) request.SecurityToken = previous.SecurityToken;
         return request;
     }
@@ -79,7 +85,8 @@ public sealed class GoogleCheckinProvider(HttpClient httpClient) : ICheckinProvi
         request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/x-protobuffer");
         request.Content.Headers.ContentEncoding.Add("gzip");
         request.Headers.AcceptEncoding.ParseAdd("gzip");
-        request.Headers.UserAgent.ParseAdd("Android-Checkin/2.0 (GManager Windows) gzip");
+        var dev = string.IsNullOrWhiteSpace(device.Summary.Profile.Device) ? "komodo" : device.Summary.Profile.Device;
+        request.Headers.TryAddWithoutValidation("User-Agent", $"Android-Checkin/2.0 ({dev} {device.Summary.Profile.SdkVersion})");
         try
         {
             using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);

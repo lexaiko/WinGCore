@@ -67,21 +67,105 @@ public partial class NativeDevicesWindow : Window
     }
     private async void NewDevice(object sender, RoutedEventArgs e) => await RunAsync(() => CreateAsync(new()
     {
-        Name = "Windows Lab " + DateTime.Now.ToString("HH:mm"), Fingerprint = "gmanager/windows_lab/windows_lab:13/TQ3A.230805.001/lab:userdebug/test-keys",
-        Brand = "gmanager", Manufacturer = "GManager", Model = "Windows Lab", Product = "windows_lab", Device = "windows_lab", Hardware = "windows", SdkVersion = 33
+        Name = "Pixel 9 Pro XL " + DateTime.Now.ToString("HH:mm"),
+        Brand = "google",
+        Manufacturer = "Google",
+        Model = "Pixel 9 Pro XL",
+        Product = "komodo",
+        Device = "komodo",
+        Hardware = "komodo",
+        Fingerprint = "google/komodo/komodo:14/AD1A.240905.004/12185678:user/release-keys",
+        SdkVersion = 34,
+        BuildTimeSeconds = 1725500000,
+        Bootloader = "komodo-1.0-12185678",
+        Radio = "g5300i-240719-240726-B-12052468",
+        WidthPixels = 1344,
+        HeightPixels = 2992,
+        DensityDpi = 480,
+        NativePlatforms = ["arm64-v8a", "armeabi-v7a", "armeabi"]
     }));
     private async void Import(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog { Filter = "Device profile (*.json)|*.json", Title = "Import device profile" };
+        var dialog = new OpenFileDialog { Filter = "Device profile or Magisk pif (*.json)|*.json", Title = "Import device profile" };
         if (dialog.ShowDialog(this) != true) return;
         await RunAsync(async () =>
         {
-            if (new FileInfo(dialog.FileName).Length > 32768) throw new ArgumentException("Profile exceeds 32 KiB.");
-            var profile = JsonSerializer.Deserialize<DeviceProfile>(await File.ReadAllTextAsync(dialog.FileName), RuntimeProtocol.Json)
-                ?? throw new ArgumentException("Invalid profile.");
+            if (new FileInfo(dialog.FileName).Length > 65536) throw new ArgumentException("Profile exceeds 64 KiB.");
+            var content = await File.ReadAllTextAsync(dialog.FileName);
+            var profile = ParseProfile(content, dialog.FileName);
             profile.Validate();
             await CreateAsync(profile);
+            Status.Text = $"Imported '{profile.Model}'. Click Register / check in to enroll it with Google.";
         });
+    }
+
+    public static DeviceProfile ParseProfile(string json, string filename)
+    {
+        try
+        {
+            var p = JsonSerializer.Deserialize<DeviceProfile>(json, RuntimeProtocol.Json);
+            if (p is not null && !string.IsNullOrWhiteSpace(p.Fingerprint)) return p;
+        }
+        catch { }
+
+        // Magisk / PlayIntegrityFix pif.json compatibility
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        string GetProp(params string[] keys)
+        {
+            foreach (var key in keys)
+            {
+                if (root.TryGetProperty(key, out var prop) && prop.ValueKind == JsonValueKind.String)
+                {
+                    var val = prop.GetString();
+                    if (!string.IsNullOrWhiteSpace(val)) return val;
+                }
+            }
+            return "";
+        }
+
+        var brand = GetProp("BRAND", "brand");
+        var model = GetProp("MODEL", "model");
+        var manufacturer = GetProp("MANUFACTURER", "manufacturer");
+        var product = GetProp("PRODUCT", "product");
+        var device = GetProp("DEVICE", "device");
+        var fingerprint = GetProp("FINGERPRINT", "fingerprint");
+        var hardware = GetProp("HARDWARE", "hardware");
+        if (string.IsNullOrWhiteSpace(hardware)) hardware = device;
+
+        var releasePart = fingerprint.Split('/') is { Length: >= 3 } buildParts ? buildParts[2].Split(':').Last() : "";
+        int sdk = releasePart switch { "16" => 36, "15" => 35, "14" => 34, "13" => 33, "12" or "12.1" => 31, "11" => 30, "10" => 29, _ => 0 };
+        // FIRST_API_LEVEL describes launch API level, not the Android version of this build.
+        if (root.TryGetProperty("SdkVersion", out var sdkProp) || root.TryGetProperty("sdk_version", out sdkProp) || root.TryGetProperty("SDK_INT", out sdkProp))
+        {
+            if (sdkProp.ValueKind == JsonValueKind.Number) sdk = sdkProp.GetInt32();
+            else if (int.TryParse(sdkProp.GetString(), out var parsedSdk)) sdk = parsedSdk;
+        }
+
+        if (string.IsNullOrWhiteSpace(fingerprint) || string.IsNullOrWhiteSpace(model))
+            throw new ArgumentException("Could not recognize profile format. Ensure file is a GManager profile or Magisk pif.json.");
+        if (sdk is < 21 or > 36) throw new ArgumentException("Provide SDK_INT for this profile's Android build. FIRST_API_LEVEL is not its current SDK version.");
+
+        var fingerprintParts = fingerprint.Split('/');
+        var fingerprintProduct = fingerprintParts.Length >= 3 ? fingerprintParts[1] : "";
+        var fingerprintDevice = fingerprintParts.Length >= 3 ? fingerprintParts[2].Split(':')[0] : "";
+        if (string.IsNullOrWhiteSpace(product)) product = fingerprintProduct;
+        if (string.IsNullOrWhiteSpace(device)) device = fingerprintDevice;
+        if (string.IsNullOrWhiteSpace(hardware)) hardware = device;
+        var name = $"{model} (Magisk PIF)";
+        return new()
+        {
+            Name = name,
+            Brand = string.IsNullOrWhiteSpace(brand) ? "google" : brand,
+            Manufacturer = string.IsNullOrWhiteSpace(manufacturer) ? "Google" : manufacturer,
+            Model = model,
+            Product = product,
+            Device = device,
+            Hardware = hardware,
+            Fingerprint = fingerprint,
+            SdkVersion = sdk,
+            BuildTimeSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+        };
     }
     private async void Export(object sender, RoutedEventArgs e) => await RunAsync(async () =>
     {
@@ -114,13 +198,9 @@ public partial class NativeDevicesWindow : Window
             SelectedSession = session;
             await LoadAsync();
             Sessions.SelectedItem = _sessions.FirstOrDefault(x => x.Id == session.Id);
-            Status.Text = "Signed in. Session ready. Select Use selected account.";
-            // Fire-and-forget device association check-in in background (matching microG behavior)
-            _ = Task.Run(async () =>
-            {
-                try { await _client.SendAsync(new(1, "checkin", DeviceId: device.Id), _lifetime.Token); }
-                catch { }
-            });
+            Status.Text = session.Status == NativeSessionStatus.Active
+                ? "Signed in. GMS setup and account check-in accepted. Select Use selected account."
+                : "Account saved. " + session.LastError + " Select Finish account setup to retry.";
         }
         else Status.Text = "Sign-in cancelled. No password was saved.";
     });
@@ -147,6 +227,23 @@ public partial class NativeDevicesWindow : Window
         }
         await LoadAsync();
         Status.Text = string.Join(" · ", results);
+    });
+    private async void FinishSetup(object sender, RoutedEventArgs e) => await RunAsync(async () =>
+    {
+        var sessionId = Session().Id;
+        try
+        {
+            var result = await _client.SendAsync(new(1, "finish-setup", SessionId: sessionId), _lifetime.Token);
+            await LoadAsync();
+            Sessions.SelectedItem = _sessions.FirstOrDefault(x => x.Id == sessionId);
+            Status.Text = result.Message;
+        }
+        catch (NativeRuntimeException)
+        {
+            await LoadAsync();
+            Sessions.SelectedItem = _sessions.FirstOrDefault(x => x.Id == sessionId);
+            throw;
+        }
     });
     private async void RemoveSession(object sender, RoutedEventArgs e) => await RunAsync(async () =>
     {

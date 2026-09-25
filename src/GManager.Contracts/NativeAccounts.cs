@@ -1,6 +1,6 @@
 namespace GManager.Contracts;
 
-public enum NativeSessionStatus { Active, ActionNeeded }
+public enum NativeSessionStatus { Active, ActionNeeded, SetupPending, AssociationPending }
 public enum NativeService { Messaging, Identity, Gmail, Drive }
 public sealed record NativeSessionSummary(Guid Id, Guid DeviceId, string Email, string AccountId,
     string DisplayName, NativeSessionStatus Status, string? LastError);

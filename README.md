@@ -6,8 +6,10 @@ native Windows runtime inspired by microG's device/service architecture.
 The native runtime implements persistent virtual-device profiles, Google device
 check-in, interactive Android-style account enrollment, and a per-session service
 token broker. The WPF app manages devices and native sessions through a local named
-pipe. Device-only check-in has been verified against Google; live account enrollment
-and service access still require verification with a test account.
+pipe. Device check-in and dedicated GMS setup/account check-in using an existing
+test account have been verified against Google. See the protocol parity and limits
+in [microG adaptation](docs/microg-adaptation.md); Google's displayed device name
+is a separate observation, not a guaranteed result of successful registration.
 
 This is an experimental Windows protocol implementation. It does not execute
 Android APKs or implement Play Integrity attestation.
@@ -25,6 +27,12 @@ successful Gmail/Drive API calls are separate checks. Unsupported Google challen
 are reported; successful device registration alone does not establish an account.
 Removing a local session deletes its local credential, not the Google account or
 server-side authorization. Existing desktop OAuth accounts remain a separate path.
+
+New account enrollment performs the master-token exchange, dedicated GMS account
+setup, and account-associated check-in in order. If the credential is saved but a
+later step fails, the account shows SetupPending or AssociationPending. Select
+**Finish account setup** to retry using that saved session. This action is also
+available as `GManager.RuntimeHost finish-setup <session-id>` for existing accounts.
 
 ## Build and test
 
@@ -108,5 +116,6 @@ trust boundary. Passwords are not used as stored session credentials.
 
 The broker isolates grants by session and service, refreshes expired grants, and
 marks revoked sessions as requiring action. Desktop OAuth tokens are not migrated
-into native sessions. Live enrollment and service compatibility remain release
-verification work, not capabilities proven by the unit tests.
+into native sessions. Local tests cannot establish Google Account's rendered
+device name or universal service compatibility. Tests that contact Google are
+skipped unless GMANAGER_RUN_LIVE_TESTS=1 is set explicitly.

@@ -11,6 +11,7 @@
 *.userprefs
 TestResults/
 [Tt]emp/
+artifacts/
 
 ## Local Runtime / Database / Credentials
 *.db

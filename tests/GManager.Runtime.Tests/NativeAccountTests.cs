@@ -134,6 +134,29 @@ public sealed class NativeAccountTests : IDisposable
     }
 
     [Fact]
+    public async Task AndroidAuthHeaderUsesBuildIdRatherThanDeviceCodename()
+    {
+        var store = new WindowsDeviceStore(Db);
+        var profile = Profile with
+        {
+            Fingerprint = "google/komodo/komodo:14/AD1A.240905.004/12185678:user/release-keys",
+            Device = "komodo", Product = "komodo", Model = "Pixel 9 Pro XL"
+        };
+        var deviceId = store.Create(profile).Id;
+        store.SaveResult(deviceId, new(CheckinOutcome.Accepted, new() { AndroidId = 123, SecurityToken = 456 }, null));
+        using var http = new HttpClient(new Handler(request =>
+        {
+            Assert.Equal("GoogleAuth/1.4 (komodo AD1A.240905.004)", request.Headers.UserAgent.ToString());
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("Token=master\nEmail=test@example.com\n")
+            });
+        }));
+        var result = await new GoogleNativeAuthProvider(http).EnrollAsync(store.Get(deviceId), "fixture-cookie", default);
+        Assert.True(result.Success);
+    }
+
+    [Fact]
     public async Task AndroidAuthUsesHexDeviceIdAndPreservesEqualsInTokens()
     {
         var store = new WindowsDeviceStore(Db);
@@ -190,6 +213,8 @@ public sealed class NativeAccountTests : IDisposable
 
     private sealed class FakeAuth : INativeAuthProvider
     {
+        public Task<NativeAuthResult> SetupAccountAsync(DeviceState device, NativeCredential credential, CancellationToken token) =>
+            GrantAsync(device, credential, NativeService.Messaging, token);
         public int EnrollCalls;
         public int GrantCalls;
         public bool Revoked;

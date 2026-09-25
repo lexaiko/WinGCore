@@ -9,6 +9,9 @@ public sealed class NativeCredential
     public required string AccountId { get; init; }
     public required string DisplayName { get; init; }
     public required string MasterToken { get; init; }
+    public string? Sid { get; init; }
+    public string? Lsid { get; init; }
+    public string? Services { get; init; }
     public override string ToString() => "NativeCredential [redacted]";
 }
 
@@ -21,6 +24,7 @@ public sealed record NativeAuthResult(string Code, string Message, NativeCredent
 public interface INativeAuthProvider
 {
     Task<NativeAuthResult> EnrollAsync(DeviceState device, string loginToken, CancellationToken token);
+    Task<NativeAuthResult> SetupAccountAsync(DeviceState device, NativeCredential credential, CancellationToken token);
     Task<NativeAuthResult> GrantAsync(DeviceState device, NativeCredential credential, NativeService service, CancellationToken token);
 }
 
@@ -48,9 +52,10 @@ public sealed class NativeAccountBroker(IDeviceStore devices, INativeAccountStor
         if (_pending.Count >= 8) throw new ArgumentException("Too many pending sign-ins. Close an existing sign-in window.");
         var profile = device.Summary.Profile;
         var locale = profile.Locale.Split('_', '-');
+        var displayName = string.IsNullOrWhiteSpace(profile.Model) ? "Android Device" : profile.Model;
         var query = new Dictionary<string, string>
         {
-            ["source"] = "android", ["xoauth_display_name"] = "Android Device",
+            ["source"] = "android", ["xoauth_display_name"] = displayName,
             ["lang"] = locale[0], ["cc"] = locale.Length > 1 ? locale[1].ToLowerInvariant() : "us",
             ["langCountry"] = profile.Locale.ToLowerInvariant(), ["hl"] = profile.Locale.Replace('_', '-'), ["tmpl"] = "new_account"
         };
@@ -72,8 +77,29 @@ public sealed class NativeAccountBroker(IDeviceStore devices, INativeAccountStor
         if (!result.Success || result.Credential is null) return new(1, false, result.Code, result.Message);
         var session = accounts.SaveSession(ticket.DeviceId, result.Credential);
         ClearGrants(session.Id);
-        return new(1, true, "SignedIn", "Native account session stored.", Sessions: [session]);
+        accounts.SetSessionStatus(session.Id, NativeSessionStatus.SetupPending, "Account saved; GMS account setup is pending.");
+        return new(1, true, "AccountSaved", "Native account saved; setup is pending.", Sessions: [accounts.GetSession(session.Id).Summary]);
     }
+
+    public async Task<NativeAuthResult> SetupAccountAsync(Guid sessionId, CancellationToken token)
+    {
+        var session = accounts.GetSession(sessionId);
+        ClearGrants(sessionId);
+        accounts.SetSessionStatus(sessionId, NativeSessionStatus.SetupPending, "GMS account setup is pending.");
+        var result = await provider.SetupAccountAsync(devices.Get(session.Summary.DeviceId), session.Credential, token);
+        if (!result.Success || result.Grant is null)
+        {
+            accounts.SetSessionStatus(sessionId, result.Code == "ActionNeeded" ? NativeSessionStatus.ActionNeeded : NativeSessionStatus.SetupPending, result.Message);
+            return result;
+        }
+        if (result.Credential is not null) accounts.SaveSession(session.Summary.DeviceId, result.Credential);
+        _grants[(sessionId, NativeService.Messaging)] = result.Grant;
+        accounts.SetSessionStatus(sessionId, NativeSessionStatus.AssociationPending, "GMS token received; account check-in is pending.");
+        return result;
+    }
+
+    public void MarkAssociation(Guid sessionId, bool accepted, string? error) =>
+        accounts.SetSessionStatus(sessionId, accepted ? NativeSessionStatus.Active : NativeSessionStatus.AssociationPending, error);
 
     public async Task<NativeAuthResult> GetGrantAsync(Guid sessionId, NativeService service, bool force, CancellationToken token)
     {
@@ -81,6 +107,8 @@ public sealed class NativeAccountBroker(IDeviceStore devices, INativeAccountStor
         var session = accounts.GetSession(sessionId);
         if (session.Summary.Status == NativeSessionStatus.ActionNeeded)
             return new("ActionNeeded", "Sign in again to restore this native session.");
+        if (session.Summary.Status == NativeSessionStatus.SetupPending)
+            return new("SetupPending", "Finish account setup before requesting service access.");
         var key = (sessionId, service);
         if (!force && _grants.TryGetValue(key, out var cached) && cached.ExpiresAt > DateTimeOffset.UtcNow.AddMinutes(2))
             return new("Accepted", "Cached service grant.", Grant: cached);

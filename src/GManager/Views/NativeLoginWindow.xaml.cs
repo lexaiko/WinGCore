@@ -59,8 +59,16 @@ public partial class NativeLoginWindow : Window
             core.Settings.IsPasswordAutosaveEnabled = false;
             core.Settings.IsGeneralAutofillEnabled = false;
             core.Settings.AreDefaultContextMenusEnabled = false;
-            core.Settings.IsReputationCheckingRequired = false; // Disable Microsoft SmartScreen overhead on every submit
-            core.Settings.UserAgent = "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36 MinuteMaid";
+            var androidVer = _device.Profile.AndroidRelease;
+            var model = string.IsNullOrWhiteSpace(_device.Profile.Model) ? "Pixel 9 Pro XL" : _device.Profile.Model;
+            core.Settings.UserAgent = $"Mozilla/5.0 (Linux; Android {androidVer}; {model}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36 MinuteMaid";
+            core.AddWebResourceRequestedFilter("https://accounts.google.com/*", CoreWebView2WebResourceContext.All);
+            core.WebResourceRequested += (_, args) =>
+            {
+                args.Request.Headers.SetHeader("sec-ch-ua-platform", "\"Android\"");
+                args.Request.Headers.SetHeader("sec-ch-ua-model", $"\"{model}\"");
+                args.Request.Headers.SetHeader("sec-ch-ua-mobile", "?1");
+            };
             core.PermissionRequested += (_, args) =>
             {
                 if (args.PermissionKind is CoreWebView2PermissionKind.Camera or CoreWebView2PermissionKind.Microphone or CoreWebView2PermissionKind.Geolocation)
@@ -117,10 +125,12 @@ public partial class NativeLoginWindow : Window
                 if (!_lifetime.IsCancellationRequested && IsLoginCompletionUri(core.Source))
                     await CompleteAsync();
             };
+            var deviceAccounts = (await _client.SessionsAsync(_lifetime.Token)).Where(x => x.DeviceId == _device.Id).Select(x => x.Email).ToArray();
             var metadata = JsonSerializer.Serialize(new
             {
                 androidId = ulong.Parse(_device.GoogleAndroidId!, CultureInfo.InvariantCulture).ToString("x"),
-                sdk = _device.Profile.SdkVersion
+                sdk = _device.Profile.SdkVersion,
+                accounts = deviceAccounts
             });
             await core.AddScriptToExecuteOnDocumentCreatedAsync("""
                 (() => {
@@ -133,7 +143,7 @@ public partial class NativeLoginWindow : Window
                   window.mm = {
                     getAndroidId: () => meta.androidId, getBuildVersionSdk: () => meta.sdk,
                     getAuthModuleVersionCode: () => 250000000, getPlayServicesVersionCode: () => 250000000,
-                    getAccounts: () => '[]', getAllowedDomains: () => '[]', getFactoryResetChallenges: () => '[]',
+                    getAccounts: () => JSON.stringify(meta.accounts), getAllowedDomains: () => '[]', getFactoryResetChallenges: () => '[]',
                     getDeviceContactsCount: () => -1, getDeviceDataVersionInfo: () => 1,
                     getPhoneNumber: () => null, getSimSerial: () => null, getSimState: () => 0,
                     fetchVerifiedPhoneNumber: () => null, hasPhoneNumber: () => false, hasTelephony: () => false,

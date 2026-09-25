@@ -58,7 +58,8 @@ public sealed class McsClient : IAsyncDisposable, IDisposable
         Guid sessionId,
         IMcsEventSink? eventSink = null,
         Func<IMcsConnection>? connectionFactory = null,
-        TimeSpan? heartbeatInterval = null)
+        TimeSpan? heartbeatInterval = null,
+        RuntimeService? runtimeService = null)
     {
         return new McsClient(async token =>
         {
@@ -70,7 +71,13 @@ public sealed class McsClient : IAsyncDisposable, IDisposable
             if (device.Registration is null)
                 throw new InvalidOperationException("Virtual device is not registered with Google.");
 
-            var grant = await broker.GetGrantAsync(sessionId, NativeService.Messaging, false, token);
+            NativeAuthResult grant;
+            if (runtimeService is not null)
+            {
+                var response = await runtimeService.HandleAsync(new(1, "get-grant", SessionId: sessionId, Service: NativeService.Messaging), token);
+                grant = new(response.Success ? "Accepted" : response.Code, response.Message, Grant: response.Grant);
+            }
+            else grant = await broker.GetGrantAsync(sessionId, NativeService.Messaging, false, token);
             if (!grant.Success)
                 throw new InvalidOperationException($"Failed to obtain ac2dm grant: {grant.Code} - {grant.Message}");
 

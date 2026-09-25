@@ -45,7 +45,7 @@ try
         if (primarySession != null)
         {
             Console.WriteLine($"[MCS] Starting persistent MCS transport for {primarySession.Email} ({primarySession.Id})...");
-            mcsClient = GManager.Providers.Google.Mcs.McsClient.Create(store, broker, primarySession.Id, new ConsoleMcsEventSink());
+            mcsClient = GManager.Providers.Google.Mcs.McsClient.Create(store, broker, primarySession.Id, new ConsoleMcsEventSink(), runtimeService: service);
             mcsClient.Start();
         }
 
@@ -83,6 +83,9 @@ try
         case "forget" when arguments.Count == 2 && Guid.TryParse(arguments[1], out var sessionId):
             request = new(RuntimeProtocol.Version, "forget-session", SessionId: sessionId);
             break;
+        case "finish-setup" when arguments.Count == 2 && Guid.TryParse(arguments[1], out var setupId):
+            request = new(RuntimeProtocol.Version, "finish-setup", SessionId: setupId);
+            break;
         default: return Usage();
     }
     shutdown.CancelAfter(TimeSpan.FromSeconds(55));
@@ -115,6 +118,7 @@ static int Usage()
           checkin <device-id>       Send native Google check-in for this device
           stop                     Stop the service
           sessions                 List native account sessions (no secrets)
+          finish-setup <session-id> Complete GMS account setup and account check-in
           forget <session-id>      Remove a native session locally
         Optional: --data-dir <directory> on each command to select isolated storage.
         Interactive enrollment and service grants are available through the WPF app.

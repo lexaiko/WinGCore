@@ -26,25 +26,7 @@ public sealed class RuntimeService(IDeviceStore store, ICheckinProvider checkinP
                 case "checkin":
                     if (request.DeviceId is not { } id || id == Guid.Empty)
                         return Error("InvalidRequest", "A device ID is required.");
-                    var state = store.Get(id);
-                    if (accounts is not null)
-                    {
-                        var cookies = new List<CheckinAccount>();
-                        foreach (var session in accounts.List().Where(x => x.DeviceId == id))
-                        {
-                            var grant = await accounts.GetGrantAsync(session.Id, NativeService.Messaging, false, cancellationToken);
-                            if (!grant.Success || grant.Grant is null) return Error(grant.Code, grant.Message);
-                            cookies.Add(new(session.Email, grant.Grant.AccessToken));
-                        }
-                        state = state with { Accounts = cookies };
-                    }
-                    var result = await checkinProvider.CheckinAsync(state, cancellationToken);
-                    if (result.Outcome == CheckinOutcome.Accepted &&
-                        (result.Registration is null || result.Registration.AndroidId == 0 || result.Registration.SecurityToken == 0))
-                        result = new(CheckinOutcome.InvalidResponse, null, "Missing registration credentials.");
-                    store.SaveResult(id, result);
-                    return new(RuntimeProtocol.Version, result.Outcome == CheckinOutcome.Accepted,
-                        result.Outcome.ToString(), result.Error ?? "Google check-in accepted.", [store.Get(id).Summary]);
+                    return await CheckinAsync(id, cancellationToken);
                 case "sessions" when accounts is not null:
                     return new(1, true, "Sessions", "Native account sessions.", Sessions: accounts.List());
                 case "begin-login" when accounts is not null && request.DeviceId is { } loginDevice:
@@ -53,7 +35,14 @@ public sealed class RuntimeService(IDeviceStore store, ICheckinProvider checkinP
                     accounts.CancelLogin(cancelTicket);
                     return Ok("Cancelled", "Sign-in cancelled.");
                 case "complete-login" when accounts is not null && request.LoginTicket is { } ticket && request.LoginToken is { } token:
-                    return await accounts.CompleteLoginAsync(ticket, token, cancellationToken);
+                    var loginResponse = await accounts.CompleteLoginAsync(ticket, token, cancellationToken);
+                    if (!loginResponse.Success || loginResponse.Sessions is not { Length: > 0 } sessions)
+                        return loginResponse;
+                    var setup = await FinishSetupAsync(sessions[0].Id, cancellationToken);
+                    // The credential was saved even when a later step needs retrying.
+                    return setup with { Success = true, Code = setup.Success ? "SignedIn" : "AccountSavedSetupPending" };
+                case "finish-setup" when accounts is not null && request.SessionId is { } setupId:
+                    return await FinishSetupAsync(setupId, cancellationToken);
                 case "get-grant" when accounts is not null && request.SessionId is { } sessionId:
                     var auth = await accounts.GetGrantAsync(sessionId, request.Service, request.ForceRefresh, cancellationToken);
                     return new(1, auth.Success, auth.Code, auth.Message, Grant: auth.Grant);
@@ -67,6 +56,49 @@ public sealed class RuntimeService(IDeviceStore store, ICheckinProvider checkinP
         catch (ArgumentException ex) { return Error("InvalidRequest", ex.Message); }
         catch (KeyNotFoundException) { return Error("NotFound", "Device was not found."); }
         finally { _operations.Release(); }
+    }
+
+    private async Task<RuntimeResponse> FinishSetupAsync(Guid sessionId, CancellationToken token)
+    {
+        var session = accounts!.List().FirstOrDefault(x => x.Id == sessionId) ?? throw new KeyNotFoundException();
+        var auth = await accounts.SetupAccountAsync(sessionId, token);
+        if (!auth.Success || auth.Grant is null)
+            return new(1, false, auth.Code, "Account saved. GMS setup: " + auth.Message,
+                Sessions: [accounts.List().First(x => x.Id == sessionId)]);
+        var checkin = await CheckinAsync(session.DeviceId, token);
+        return checkin with
+        {
+            Message = checkin.Success ? "GMS account setup and account check-in accepted." : "Account saved. Account check-in: " + checkin.Message,
+            Sessions = [accounts.List().First(x => x.Id == sessionId)]
+        };
+    }
+
+    private async Task<RuntimeResponse> CheckinAsync(Guid deviceId, CancellationToken token)
+    {
+        var state = store.Get(deviceId);
+        var sessions = accounts?.List().Where(x => x.DeviceId == deviceId).ToArray() ?? [];
+        var cookies = new List<CheckinAccount>();
+        foreach (var session in sessions)
+        {
+            var grant = await accounts!.GetGrantAsync(session.Id, NativeService.Messaging, false, token);
+            if (!grant.Success || grant.Grant is null)
+            {
+                foreach (var pending in sessions.Where(x => x.Status == NativeSessionStatus.AssociationPending))
+                    accounts.MarkAssociation(pending.Id, false, "Account check-in blocked: " + grant.Message);
+                return Error(grant.Code, grant.Message);
+            }
+            cookies.Add(new(session.Email, grant.Grant.AccessToken));
+        }
+        var result = await checkinProvider.CheckinAsync(state with { Accounts = cookies }, token);
+        if (result.Outcome == CheckinOutcome.Accepted &&
+            (result.Registration is null || result.Registration.AndroidId == 0 || result.Registration.SecurityToken == 0 ||
+             state.Registration is { } old && result.Registration.AndroidId != old.AndroidId))
+            result = new(CheckinOutcome.InvalidResponse, null, "Missing or inconsistent registration credentials.");
+        store.SaveResult(deviceId, result);
+        foreach (var session in sessions.Where(x => x.Status == NativeSessionStatus.AssociationPending))
+            accounts!.MarkAssociation(session.Id, result.Outcome == CheckinOutcome.Accepted, result.Error);
+        return new(1, result.Outcome == CheckinOutcome.Accepted, result.Outcome.ToString(),
+            result.Error ?? "Google check-in accepted.", [store.Get(deviceId).Summary]);
     }
 
     private static RuntimeResponse Ok(string code, string message, DeviceSummary[]? devices = null) =>

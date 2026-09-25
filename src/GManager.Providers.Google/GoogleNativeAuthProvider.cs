@@ -34,8 +34,38 @@ public sealed class GoogleNativeAuthProvider(HttpClient http) : INativeAuthProvi
         return new("Accepted", "Native account session accepted.", new NativeCredential
         {
             Email = email, MasterToken = master, AccountId = values.GetValueOrDefault("accountId") ?? email,
-            DisplayName = string.IsNullOrWhiteSpace(name) ? email : name
+            DisplayName = string.IsNullOrWhiteSpace(name) ? email : name,
+            Sid = values.GetValueOrDefault("SID"), Lsid = values.GetValueOrDefault("LSID"),
+            Services = values.GetValueOrDefault("services")
         });
+    }
+
+    public async Task<NativeAuthResult> SetupAccountAsync(DeviceState device, NativeCredential credential, CancellationToken token)
+    {
+        // LoginActivity.retrieveGmsToken: this is account enrollment, not an ordinary grant refresh.
+        var fields = BaseFields(device);
+        fields["service"] = "ac2dm";
+        fields["Email"] = credential.Email;
+        fields["Token"] = credential.MasterToken;
+        fields["system_partition"] = "1";
+        fields["has_permission"] = "1";
+        fields["add_account"] = "1";
+        fields["get_accountid"] = "1";
+        fields["droidguard_results"] = "null";
+        var (error, values) = await SendAsync(device, fields, token);
+        if (error is not null) return error;
+        if (values.TryGetValue("Email", out var email) && !string.Equals(email, credential.Email, StringComparison.OrdinalIgnoreCase))
+            return new("InvalidResponse", "Account setup returned a different account.");
+        var grant = ReadGrant(values);
+        if (!grant.Success) return grant;
+        return grant with { Credential = new NativeCredential
+        {
+            Email = credential.Email, MasterToken = credential.MasterToken,
+            AccountId = values.GetValueOrDefault("accountId") ?? credential.AccountId,
+            DisplayName = credential.DisplayName, Sid = values.GetValueOrDefault("SID") ?? credential.Sid,
+            Lsid = values.GetValueOrDefault("LSID") ?? credential.Lsid,
+            Services = values.GetValueOrDefault("services") ?? credential.Services
+        } };
     }
 
     public async Task<NativeAuthResult> GrantAsync(DeviceState device, NativeCredential credential, NativeService service, CancellationToken token)
@@ -60,6 +90,11 @@ public sealed class GoogleNativeAuthProvider(HttpClient http) : INativeAuthProvi
         fields["has_permission"] = "1";
         var (result, values) = await SendAsync(device, fields, token);
         if (result is not null) return result;
+        return ReadGrant(values);
+    }
+
+    private static NativeAuthResult ReadGrant(Dictionary<string, string> values)
+    {
         if (!values.TryGetValue("Auth", out var access) || string.IsNullOrWhiteSpace(access))
             return new("InvalidResponse", "Google did not return a service grant.");
         var expires = DateTimeOffset.UtcNow.AddMinutes(5);
@@ -92,7 +127,9 @@ public sealed class GoogleNativeAuthProvider(HttpClient http) : INativeAuthProvi
     {
         var empty = new Dictionary<string, string>();
         using var request = new HttpRequestMessage(HttpMethod.Post, Endpoint) { Content = new FormUrlEncodedContent(fields) };
-        request.Headers.UserAgent.ParseAdd($"GoogleAuth/1.4 ({device.Summary.Profile.Device} {device.Summary.Profile.SdkVersion})");
+        var dev = string.IsNullOrWhiteSpace(device.Summary.Profile.Device) ? "komodo" : device.Summary.Profile.Device;
+        var buildId = device.Summary.Profile.BuildId;
+        request.Headers.TryAddWithoutValidation("User-Agent", $"GoogleAuth/1.4 ({dev} {buildId})");
         var appPkg = fields.GetValueOrDefault("app", Package);
         request.Headers.Add("app", appPkg);
         request.Headers.Add("device", device.Registration!.AndroidId.ToString("x", CultureInfo.InvariantCulture));
@@ -118,7 +155,7 @@ public sealed class GoogleNativeAuthProvider(HttpClient http) : INativeAuthProvi
                     "BadAuthentication" or "AccountDeleted" or "AccountDisabled" => new("ActionNeeded", "Google requires a new sign-in for this account."),
                     "NeedsBrowser" or "CaptchaRequired" or "DeviceManagementRequired" => new("ChallengeRequired", "Google requires an additional sign-in or device challenge. Sign in again; unsupported device challenges cannot be completed here."),
                     "ServiceDisabled" or "Unauthorized" => new("PermissionRequired", "Google did not grant access to this service."),
-                    _ => new("Rejected", $"Google rejected the native authentication request ({error}).")
+                    _ => new("Rejected", "Google rejected the native authentication request.")
                 }, empty);
             }
             if (!response.IsSuccessStatusCode) return (new("Rejected", $"Google authentication returned HTTP {(int)response.StatusCode}."), empty);
@@ -144,4 +181,5 @@ public sealed class GoogleNativeAuthProvider(HttpClient http) : INativeAuthProvi
         }
         return values;
     }
+
 }
